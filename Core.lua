@@ -33,19 +33,21 @@ function PersonalPlayerBlacklist:OnInitialize()
     self:RegisterChatCommand("ppb", "SlashCommand")
     self.db = LibStub("AceDB-3.0"):New("PersonalPlayerBlacklistDB")
     LibStub("AceConfig-3.0"):RegisterOptionsTable(addon.addonName, options)
-	self.optionsFrame = LibStub("AceConfigDialog-3.0"):AddToBlizOptions(addon.addonName, addon.addonName)
-
+    self.optionsFrame = LibStub("AceConfigDialog-3.0"):AddToBlizOptions(addon.addonName, addon.addonName)
 end
+
 function PersonalPlayerBlacklist:SlashCommand(msg)
-	if not msg or msg:trim() == "" then
-		-- https://github.com/Stanzilla/WoWUIBugs/issues/89
+    if not msg or msg:trim() == "" then
+        -- https://github.com/Stanzilla/WoWUIBugs/issues/89
         Settings.OpenToCategory("PersonalPlayerBlacklist")
     else
         PersonalPlayerBlacklist:PrintPlayers()
-	end
+    end
 end
+
 function PersonalPlayerBlacklist:PrintPlayers()
-    for key, value in pairs(self.db.global.players) do
+    if not self.db.global.blacklistedPlayers then return end
+    for key, value in pairs(self.db.global.blacklistedPlayers) do
         local name = "";
         local server = "";
         local reason = "";
@@ -66,13 +68,27 @@ function PersonalPlayerBlacklist:GetShowPopup(info)
     return self.db.profile.ShowPopup;
 end
 
-function PersonalPlayerBlacklist:SetShowPopup(info,value)
-    self.db.profile.ShowPopup=value;
+function PersonalPlayerBlacklist:SetShowPopup(info, value)
+    self.db.profile.ShowPopup = value;
 end
 
 function PersonalPlayerBlacklist:SavePlayer(playerName, playerServer)
-    if not self.db.global.players then self.db.global.players = {} end
-    self.db.global.blacklistedPlayers[playerName.."-"..playerServer] ={ ["name"] = playerName, ["server"] = playerServer, ["reason"] = "" }
+    if not self.db.global.blacklistedPlayers then self.db.global.blacklistedPlayers = {} end
+    self.db.global.blacklistedPlayers[playerName .. "-" .. playerServer] = { ["name"] = playerName, ["server"] =
+    playerServer, ["reason"] = "" }
+end
+
+function PersonalPlayerBlacklist:RemovePlayer(name)
+    if not self.db.global.blacklistedPlayers then self.db.global.blacklistedPlayers = {} end
+    self.db.global.blacklistedPlayers[name] = nil;
+end
+
+function PersonalPlayerBlacklist:CheckPlayerInList(name)
+    if not self.db.global.blacklistedPlayers or not self.db.global.blacklistedPlayers[name] then
+        return false
+    else
+        return true
+    end
 end
 
 do
@@ -129,9 +145,29 @@ do
         if not IsValidName(contextData) then return end
         rootDescription:CreateDivider();
         rootDescription:CreateTitle(addon.addonTitle);
-        rootDescription:CreateButton("|cffFF0000Blacklist player|r", function()
-            print("|cffFF0000" .. contextData.name .. "-" .. contextData.server .. "|r added to blacklist.");
+        local popupText = "";
+        local notification = "";
+        -- for key, value in pairs(contextData) do
+        --      print(key..":"..tostring(value))
+        -- end
+        local name, realm = UnitFullName("player")
+        if not contextData.server then contextData.server = realm end
+        local playername = contextData.name .. "-" .. contextData.server;
+        local isOnList=PersonalPlayerBlacklist:CheckPlayerInList(playername);
+        if not isOnList then
+            popupText = "|cffFF0000Blacklist player|r"
+            notification = "|cffFF0000" .. playername .. "|r added to blacklist.";
+        else
+            popupText = "|cFF00FF00Remove from blacklist|r"
+            notification = "|cFF00FF00" .. playername .. "|r removed from blacklist.";
+        end
+        rootDescription:CreateButton(popupText, function()
+            if not isOnList then
             PersonalPlayerBlacklist:SavePlayer(contextData.name, contextData.server);
+            else
+                PersonalPlayerBlacklist:RemovePlayer(playername)
+            end
+            print(notification);
             --PrintTableContents(contextData)
         end)
     end
@@ -141,8 +177,8 @@ do
 
         -- Find via /run Menu.PrintOpenMenuTags()
         local menuTags = {
-            ["MENU_UNIT_SELF"] = true,
             ["MENU_UNIT_PLAYER"] = true,
+            ["MENU_UNIT_ENEMY_PLAYER"] = true,
             ["MENU_UNIT_PARTY"] = true,
             ["MENU_UNIT_RAID_PLAYER"] = true,
             ["MENU_UNIT_FRIEND"] = true,
