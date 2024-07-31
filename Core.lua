@@ -1,0 +1,169 @@
+local _G = getfenv(0)
+local ADDON_NAME, addon = ...
+addon.addonName = "PersonalPlayerBlacklist"
+addon.addonTitle = "Personal Player Blacklist"
+local PersonalPlayerBlacklist = LibStub("AceAddon-3.0"):NewAddon(addon.addonName, "AceConsole-3.0", "AceHook-3.0",
+    "AceEvent-3.0", "AceTimer-3.0")
+
+PersonalPlayerBlacklist:RegisterChatCommand("rl", "Reload")
+
+function PersonalPlayerBlacklist:Reload()
+    ReloadUI();
+end
+
+local options = {
+    name = "Personal Player Blacklist",
+    handler = PersonalPlayerBlacklist,
+    type = 'group',
+    args = {
+        reasonPopup = {
+            type = 'toggle',
+            name = 'Always show popup',
+            desc = 'Shows a popup when adding a new player to allow you to write a reason',
+            set = "SetShowPopup",
+            get = "GetShowPopup",
+        },
+    },
+}
+
+LibStub("AceConfig-3.0"):RegisterOptionsTable(addon.addonName, options, { "PPB", "ppb" })
+
+function PersonalPlayerBlacklist:OnInitialize()
+    self:RegisterChatCommand("personalplayerblacklist", "SlashCommand")
+    self:RegisterChatCommand("ppb", "SlashCommand")
+    self.db = LibStub("AceDB-3.0"):New("PersonalPlayerBlacklistDB")
+    LibStub("AceConfig-3.0"):RegisterOptionsTable(addon.addonName, options)
+	self.optionsFrame = LibStub("AceConfigDialog-3.0"):AddToBlizOptions(addon.addonName, addon.addonName)
+
+end
+function PersonalPlayerBlacklist:SlashCommand(msg)
+	if not msg or msg:trim() == "" then
+		-- https://github.com/Stanzilla/WoWUIBugs/issues/89
+        Settings.OpenToCategory("PersonalPlayerBlacklist")
+    else
+        PersonalPlayerBlacklist:PrintPlayers()
+	end
+end
+function PersonalPlayerBlacklist:PrintPlayers()
+    for key, value in pairs(self.db.global.players) do
+        local name = "";
+        local server = "";
+        local reason = "";
+        if value["name"] then
+            name = value["name"]
+        end
+        if value["server"] then
+            server = value["server"]
+        end
+        if value["reason"] then
+            reason = value["reason"]
+        end
+        print(key .. " : " .. name .. "-" .. server .. ":" .. reason);
+    end
+end
+
+function PersonalPlayerBlacklist:GetShowPopup(info)
+    return self.db.profile.ShowPopup;
+end
+
+function PersonalPlayerBlacklist:SetShowPopup(info,value)
+    self.db.profile.ShowPopup=value;
+end
+
+function PersonalPlayerBlacklist:SavePlayer(playerName, playerServer)
+    if not self.db.global.players then self.db.global.players = {} end
+    self.db.global.blacklistedPlayers[playerName.."-"..playerServer] ={ ["name"] = playerName, ["server"] = playerServer, ["reason"] = "" }
+end
+
+do
+    local module = PersonalPlayerBlacklist:NewModule("UnitPopupMenus")
+    module.enabled = false
+
+
+    local dropDownTypes = {
+        ARENAENEMY = true,
+        BN_FRIEND = true,
+        CHAT_ROSTER = true,
+        COMMUNITIES_GUILD_MEMBER = true,
+        COMMUNITIES_WOW_MEMBER = true,
+        FOCUS = true,
+        FRIEND = true,
+        GUILD = true,
+        GUILD_OFFLINE = true,
+        PARTY = true,
+        PLAYER = true,
+        RAID = true,
+        RAID_PLAYER = true,
+        SELF = true,
+        TARGET = true,
+        WORLD_STATE_SCORE = true
+    }
+
+    local function IsUnitDropDown(dropdown)
+        return type(dropdown.which) == "string" and dropDownTypes[dropdown.which]
+    end
+
+    local function GetName(dropdown)
+        local unit = dropdown.unit
+        if _G.UnitExists(unit) and _G.UnitIsPlayer(unit) then
+            return _G.GetUnitName(unit, true)
+        end
+        return nil
+    end
+
+
+    ---@type LibDropDownExtension
+    local LibDropDownExtension = LibStub and LibStub:GetLibrary("LibDropDownExtension-1.0", true)
+
+    function module:HasMenu()
+        return Menu and Menu.ModifyMenu
+    end
+
+    local function IsValidName(contextData)
+        return contextData.name and strsub(contextData.name, 1, 1) ~= "|"
+    end
+
+
+
+    function module:MenuHandler(owner, rootDescription, contextData)
+        if not IsValidName(contextData) then return end
+        rootDescription:CreateDivider();
+        rootDescription:CreateTitle(addon.addonTitle);
+        rootDescription:CreateButton("|cffFF0000Blacklist player|r", function()
+            print("|cffFF0000" .. contextData.name .. "-" .. contextData.server .. "|r added to blacklist.");
+            PersonalPlayerBlacklist:SavePlayer(contextData.name, contextData.server);
+            --PrintTableContents(contextData)
+        end)
+    end
+
+    function module:AddItemsWithMenu()
+        if not self:HasMenu() then return end
+
+        -- Find via /run Menu.PrintOpenMenuTags()
+        local menuTags = {
+            ["MENU_UNIT_SELF"] = true,
+            ["MENU_UNIT_PLAYER"] = true,
+            ["MENU_UNIT_PARTY"] = true,
+            ["MENU_UNIT_RAID_PLAYER"] = true,
+            ["MENU_UNIT_FRIEND"] = true,
+            ["MENU_UNIT_COMMUNITIES_GUILD_MEMBER"] = true,
+            ["MENU_UNIT_COMMUNITIES_MEMBER"] = true,
+            ["MENU_LFG_FRAME_SEARCH_ENTRY"] = true,
+        }
+
+        for tag, enabled in pairs(menuTags) do
+            Menu.ModifyMenu(tag, GenerateClosure(self.MenuHandler, self))
+        end
+    end
+
+    function module:Setup()
+        if self:HasMenu() then
+            self:AddItemsWithMenu()
+        end
+        self.enabled = true
+    end
+
+    function module:OnEnable()
+        self:Setup()
+    end
+end
