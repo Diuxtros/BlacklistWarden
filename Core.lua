@@ -26,23 +26,87 @@ local options = {
     },
 }
 
+local defaults = {
+    global = {
+        blacklistedPlayers = {},
+        previousGroupSize = 0
+    },
+}
+
+local BlacklistPopupWindow = {
+    type = "group",
+    handler = PersonalPlayerBlacklist,
+    name = "Add to blacklist",
+    args = {
+        enable = {
+            name = "Enable",
+            desc = "Enables / disables the addon",
+            type = "toggle",
+            set = "SetShowPopup",
+            get = "GetShowPopup"
+        },
+    }
+}
+
 LibStub("AceConfig-3.0"):RegisterOptionsTable(addon.addonName, options, { "PPB", "ppb" })
+
+local aceDialog = LibStub("AceConfigDialog-3.0");
+local AceGUI = LibStub("AceGUI-3.0")
 
 function PersonalPlayerBlacklist:OnInitialize()
     self:RegisterChatCommand("personalplayerblacklist", "SlashCommand")
     self:RegisterChatCommand("ppb", "SlashCommand")
-    self.db = LibStub("AceDB-3.0"):New("PersonalPlayerBlacklistDB")
+    self.db = LibStub("AceDB-3.0"):New("PersonalPlayerBlacklistDB", defaults)
     LibStub("AceConfig-3.0"):RegisterOptionsTable(addon.addonName, options)
-    self.optionsFrame = LibStub("AceConfigDialog-3.0"):AddToBlizOptions(addon.addonName, addon.addonName)
+    self.optionsFrame = aceDialog:AddToBlizOptions(addon.addonName, addon.addonName)
+    self:RegisterEvent("GROUP_ROSTER_UPDATE", "CheckPlayersOnGroupUpdate");
+end
+
+function PersonalPlayerBlacklist:CheckPlayersOnGroupUpdate()
+    local groupCount = GetNumGroupMembers()
+    if groupCount > self.db.global.previousGroupSize then
+        for i = 1, groupCount do
+            if groupCount < 6 then
+                name, realm = UnitName("party" .. i)
+            else
+                name, realm = UnitName("raid" .. i)
+            end
+            if not realm then realm = GetRealmName() end
+            if name and realm and PersonalPlayerBlacklist:IsPlayerInList(name .. "-" .. realm) then
+                print(name .. "-" .. realm .. " is on your blacklist.");
+            end
+        end
+    end
+    self.db.global.previousGroupSize = groupCount;
 end
 
 function PersonalPlayerBlacklist:SlashCommand(msg)
     if not msg or msg:trim() == "" then
-        -- https://github.com/Stanzilla/WoWUIBugs/issues/89
         Settings.OpenToCategory("PersonalPlayerBlacklist")
     else
-        PersonalPlayerBlacklist:PrintPlayers()
+        PersonalPlayerBlacklist:ShowBlacklistPopupWindow()
+        --PersonalPlayerBlacklist:PrintPlayers()
     end
+end
+
+function PersonalPlayerBlacklist:ShowBlacklistPopupWindow()
+    local container = AceGUI:Create("Window");
+    container:SetTitle("Add to blacklist");
+    container:SetFullWidth(true);
+    container:SetLayout("Flow");
+    container:SetWidth(400)
+    container:SetHeight(200)
+    container:SetPoint("TOP", UIParent, "TOP", 0, -200)
+
+    local dropdown = AceGUI:Create("Dropdown");
+    container:AddChild(dropdown);
+    dropdown:SetLabel("Enter Name");
+    dropdown:SetLabel("Reason");
+
+    local button = AceGUI:Create("Button")
+    button:SetText("Add")
+    button:SetWidth(200)
+    container:AddChild(button)
 end
 
 function PersonalPlayerBlacklist:PrintPlayers()
@@ -74,8 +138,12 @@ end
 
 function PersonalPlayerBlacklist:SavePlayer(playerName, playerServer)
     if not self.db.global.blacklistedPlayers then self.db.global.blacklistedPlayers = {} end
-    self.db.global.blacklistedPlayers[playerName .. "-" .. playerServer] = { ["name"] = playerName, ["server"] =
-    playerServer, ["reason"] = "" }
+    self.db.global.blacklistedPlayers[playerName .. "-" .. playerServer] = {
+        ["name"] = playerName,
+        ["server"] =
+            playerServer,
+        ["reason"] = ""
+    }
 end
 
 function PersonalPlayerBlacklist:RemovePlayer(name)
@@ -83,7 +151,7 @@ function PersonalPlayerBlacklist:RemovePlayer(name)
     self.db.global.blacklistedPlayers[name] = nil;
 end
 
-function PersonalPlayerBlacklist:CheckPlayerInList(name)
+function PersonalPlayerBlacklist:IsPlayerInList(name)
     if not self.db.global.blacklistedPlayers or not self.db.global.blacklistedPlayers[name] then
         return false
     else
@@ -94,42 +162,6 @@ end
 do
     local module = PersonalPlayerBlacklist:NewModule("UnitPopupMenus")
     module.enabled = false
-
-
-    local dropDownTypes = {
-        ARENAENEMY = true,
-        BN_FRIEND = true,
-        CHAT_ROSTER = true,
-        COMMUNITIES_GUILD_MEMBER = true,
-        COMMUNITIES_WOW_MEMBER = true,
-        FOCUS = true,
-        FRIEND = true,
-        GUILD = true,
-        GUILD_OFFLINE = true,
-        PARTY = true,
-        PLAYER = true,
-        RAID = true,
-        RAID_PLAYER = true,
-        SELF = true,
-        TARGET = true,
-        WORLD_STATE_SCORE = true
-    }
-
-    local function IsUnitDropDown(dropdown)
-        return type(dropdown.which) == "string" and dropDownTypes[dropdown.which]
-    end
-
-    local function GetName(dropdown)
-        local unit = dropdown.unit
-        if _G.UnitExists(unit) and _G.UnitIsPlayer(unit) then
-            return _G.GetUnitName(unit, true)
-        end
-        return nil
-    end
-
-
-    ---@type LibDropDownExtension
-    local LibDropDownExtension = LibStub and LibStub:GetLibrary("LibDropDownExtension-1.0", true)
 
     function module:HasMenu()
         return Menu and Menu.ModifyMenu
@@ -150,10 +182,10 @@ do
         -- for key, value in pairs(contextData) do
         --      print(key..":"..tostring(value))
         -- end
-        local name, realm = UnitFullName("player")
+        local realm = GetRealmName()
         if not contextData.server then contextData.server = realm end
         local playername = contextData.name .. "-" .. contextData.server;
-        local isOnList=PersonalPlayerBlacklist:CheckPlayerInList(playername);
+        local isOnList = PersonalPlayerBlacklist:IsPlayerInList(playername);
         if not isOnList then
             popupText = "|cffFF0000Blacklist player|r"
             notification = "|cffFF0000" .. playername .. "|r added to blacklist.";
@@ -163,7 +195,7 @@ do
         end
         rootDescription:CreateButton(popupText, function()
             if not isOnList then
-            PersonalPlayerBlacklist:SavePlayer(contextData.name, contextData.server);
+                PersonalPlayerBlacklist:SavePlayer(contextData.name, contextData.server);
             else
                 PersonalPlayerBlacklist:RemovePlayer(playername)
             end
