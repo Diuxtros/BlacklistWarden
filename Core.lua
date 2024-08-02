@@ -33,19 +33,14 @@ local defaults = {
     },
 }
 
-local BlacklistPopupWindow = {
-    type = "group",
-    handler = PersonalPlayerBlacklist,
-    name = "Add to blacklist",
-    args = {
-        enable = {
-            name = "Enable",
-            desc = "Enables / disables the addon",
-            type = "toggle",
-            set = "SetShowPopup",
-            get = "GetShowPopup"
-        },
-    }
+local BlacklistPopupWindowOptions = {
+   "Bad player",
+   "Quitter",
+   "AFKer",
+   "Toxic",
+   "Scammer",
+   "Bigot",
+   "Other"
 }
 
 LibStub("AceConfig-3.0"):RegisterOptionsTable(addon.addonName, options, { "PPB", "ppb" })
@@ -90,23 +85,65 @@ function PersonalPlayerBlacklist:SlashCommand(msg)
 end
 
 function PersonalPlayerBlacklist:ShowBlacklistPopupWindow()
-    local container = AceGUI:Create("Window");
-    container:SetTitle("Add to blacklist");
-    container:SetFullWidth(true);
-    container:SetLayout("Flow");
-    container:SetWidth(400)
-    container:SetHeight(200)
-    container:SetPoint("TOP", UIParent, "TOP", 0, -200)
+    local container = CreateFrame("Frame", "BlacklistPopupWindow", _UIParent, BackdropTemplateMixin and "BackdropTemplate")
+	container:SetFrameStrata("DIALOG")
+	container:SetToplevel(true)
+	container:SetWidth(250)
+	container:SetHeight(150)
+	container:SetPoint("CENTER", UIParent)
+	container:SetBackdrop(
+		{bgFile="Interface\\ChatFrame\\ChatFrameBackground",
+	    edgeFile="Interface\\DialogFrame\\UI-DialogBox-Border", tile=true,
+		tileSize=32, edgeSize=32, insets={left=11, right=12, top=12, bottom=11}})
+    container:SetBackdropColor(0,0,0,1)
 
-    local dropdown = AceGUI:Create("Dropdown");
-    container:AddChild(dropdown);
-    dropdown:SetLabel("Enter Name");
-    dropdown:SetLabel("Reason");
+	local savebutton = CreateFrame("Button", nil, container, "UIPanelButtonTemplate")
+	savebutton:SetText("Save")
+	savebutton:SetWidth(100)
+	savebutton:SetHeight(20)
+	savebutton:SetPoint("BOTTOM", container, "BOTTOM", -60, 20)
+	savebutton:SetScript("OnClick",
+	    function(this)
+	        this:GetParent():Hide()
+	    end)
 
-    local button = AceGUI:Create("Button")
-    button:SetText("Add")
-    button:SetWidth(200)
-    container:AddChild(button)
+	local cancelbutton = CreateFrame("Button", nil, container, "UIPanelButtonTemplate")
+	cancelbutton:SetText("Cancel")
+	cancelbutton:SetWidth(100)
+	cancelbutton:SetHeight(20)
+	cancelbutton:SetPoint("BOTTOM", container, "BOTTOM", 60, 20)
+	cancelbutton:SetScript("OnClick", function(this) this:GetParent():Hide(); end)
+
+
+    local title = container:CreateFontString(nil, "OVERLAY", "GameFontHighlight")
+    title:SetPoint("TOP", container, "TOP", 0, -20)
+    title:SetText("Add to blacklist")
+
+    local dropdownLabel = container:CreateFontString(nil, "OVERLAY", "GameFontNormal")
+	dropdownLabel:SetPoint("LEFT", container, "LEFT", 20, 0)
+	dropdownLabel:SetTextColor(1.0,1.0,1.0,1)
+    dropdownLabel:SetText("Reason:")
+    
+    local dropdown = CreateFrame("Button", "ReasonDropDown", container, "UIDropDownMenuTemplate")
+    dropdown:ClearAllPoints()
+    dropdown:SetPoint("TOPLEFT", dropdownLabel, "TOPRIGHT", 7, 5)
+    dropdown:Show()
+    UIDropDownMenu_Initialize(dropdown, function(self, level)
+        local info = nil
+        for i = 1,#BlacklistPopupWindowOptions, 1 do
+            info = UIDropDownMenu_CreateInfo()
+            info.text = BlacklistPopupWindowOptions[i]
+            info.value = i
+            info.func = function(self)
+                UIDropDownMenu_SetSelectedValue(dropdown, self.value)
+            end
+            UIDropDownMenu_AddButton(info, level)
+        end
+    end)
+    UIDropDownMenu_SetWidth(dropdown, 100);
+    UIDropDownMenu_SetButtonWidth(dropdown, 124)
+    UIDropDownMenu_SetSelectedValue(dropdown, 0)
+    UIDropDownMenu_JustifyText(dropdown, "LEFT")
 end
 
 function PersonalPlayerBlacklist:PrintPlayers()
