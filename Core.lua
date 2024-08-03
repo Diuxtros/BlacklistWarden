@@ -34,13 +34,14 @@ local defaults = {
 }
 
 local BlacklistPopupWindowOptions = {
-   "Bad player",
-   "Quitter",
-   "AFKer",
-   "Toxic",
-   "Scammer",
-   "Bigot",
-   "Other"
+    "All",
+    "Bad player",
+    "Quitter",
+    "AFKer",
+    "Toxic",
+    "Scammer",
+    "Bigot",
+    "Other"
 }
 
 LibStub("AceConfig-3.0"):RegisterOptionsTable(addon.addonName, options, { "PPB", "ppb" })
@@ -85,65 +86,103 @@ function PersonalPlayerBlacklist:SlashCommand(msg)
 end
 
 function PersonalPlayerBlacklist:ShowBlacklistPopupWindow()
-    local container = CreateFrame("Frame", "BlacklistPopupWindow", _UIParent, BackdropTemplateMixin and "BackdropTemplate")
-	container:SetFrameStrata("DIALOG")
-	container:SetToplevel(true)
-	container:SetWidth(250)
-	container:SetHeight(150)
-	container:SetPoint("CENTER", UIParent)
-	container:SetBackdrop(
-		{bgFile="Interface\\ChatFrame\\ChatFrameBackground",
-	    edgeFile="Interface\\DialogFrame\\UI-DialogBox-Border", tile=true,
-		tileSize=32, edgeSize=32, insets={left=11, right=12, top=12, bottom=11}})
-    container:SetBackdropColor(0,0,0,1)
+    local container = CreateFrame("Frame", "BlacklistPopupWindow", UIParent,
+        BackdropTemplateMixin and "BackdropTemplate")
+    container:SetFrameStrata("DIALOG")
+    container:SetToplevel(true)
+    container:SetWidth(250)
+    container:SetHeight(200)
+    container:SetPoint("CENTER", UIParent)
+    container:SetScale(1 / UIParent:GetScale())
+    container:SetBackdrop(
+        {
+            bgFile = "Interface\\ChatFrame\\ChatFrameBackground",
+            edgeFile = "Interface\\DialogFrame\\UI-DialogBox-Border",
+            tile = true,
+            tileSize = 32,
+            edgeSize = 15,
+            insets = { left = 2, right = 2, top = 2, bottom = 2 }
+        })
+    container:SetBackdropColor(0, 0, 0, 1)
+    container:SetMovable(true)
+    container:RegisterForDrag("LeftButton")
+    container:SetScript("OnDragStart",
+        function(this, button)
+            this:StartMoving()
+        end)
+    container:SetScript("OnDragStop",
+        function(this)
+            this:StopMovingOrSizing()
+        end)
+    container:EnableMouse(true)
 
-	local savebutton = CreateFrame("Button", nil, container, "UIPanelButtonTemplate")
-	savebutton:SetText("Save")
-	savebutton:SetWidth(100)
-	savebutton:SetHeight(20)
-	savebutton:SetPoint("BOTTOM", container, "BOTTOM", -60, 20)
-	savebutton:SetScript("OnClick",
-	    function(this)
-	        this:GetParent():Hide()
-	    end)
+    local savebutton = CreateFrame("Button", nil, container, "UIPanelButtonTemplate")
+    savebutton:SetText("Save")
+    savebutton:SetWidth(100)
+    savebutton:SetHeight(20)
+    savebutton:SetPoint("BOTTOM", container, "BOTTOM", -60, 20)
+    savebutton:SetScript("OnClick",
+        function(this)
+            this:GetParent():Hide()
+        end)
+    local colorR, colorG, colorB, colorA = savebutton:GetNormalFontObject():GetTextColor()
 
-	local cancelbutton = CreateFrame("Button", nil, container, "UIPanelButtonTemplate")
-	cancelbutton:SetText("Cancel")
-	cancelbutton:SetWidth(100)
-	cancelbutton:SetHeight(20)
-	cancelbutton:SetPoint("BOTTOM", container, "BOTTOM", 60, 20)
-	cancelbutton:SetScript("OnClick", function(this) this:GetParent():Hide(); end)
+    local cancelbutton = CreateFrame("Button", nil, container, "UIPanelButtonTemplate")
+    cancelbutton:SetText("Cancel")
+    cancelbutton:SetWidth(100)
+    cancelbutton:SetHeight(20)
+    cancelbutton:SetPoint("BOTTOM", container, "BOTTOM", 60, 20)
+    cancelbutton:SetScript("OnClick", function(this) this:GetParent():Hide(); end)
 
 
     local title = container:CreateFontString(nil, "OVERLAY", "GameFontHighlight")
-    title:SetPoint("TOP", container, "TOP", 0, -20)
-    title:SetText("Add to blacklist")
+    title:SetPoint("TOP", container, "TOP", 0, -10)
+    title:SetText("Add to Blacklist")
+    title:SetTextColor(1.0, 1.0, 1.0, 1.0)
 
-    local dropdownLabel = container:CreateFontString(nil, "OVERLAY", "GameFontNormal")
-	dropdownLabel:SetPoint("LEFT", container, "LEFT", 20, 0)
-	dropdownLabel:SetTextColor(1.0,1.0,1.0,1)
-    dropdownLabel:SetText("Reason:")
-    
-    local dropdown = CreateFrame("Button", "ReasonDropDown", container, "UIDropDownMenuTemplate")
-    dropdown:ClearAllPoints()
-    dropdown:SetPoint("TOPLEFT", dropdownLabel, "TOPRIGHT", 7, 5)
-    dropdown:Show()
-    UIDropDownMenu_Initialize(dropdown, function(self, level)
-        local info = nil
-        for i = 1,#BlacklistPopupWindowOptions, 1 do
-            info = UIDropDownMenu_CreateInfo()
-            info.text = BlacklistPopupWindowOptions[i]
-            info.value = i
-            info.func = function(self)
-                UIDropDownMenu_SetSelectedValue(dropdown, self.value)
-            end
-            UIDropDownMenu_AddButton(info, level)
-        end
-    end)
-    UIDropDownMenu_SetWidth(dropdown, 100);
-    UIDropDownMenu_SetButtonWidth(dropdown, 124)
-    UIDropDownMenu_SetSelectedValue(dropdown, 0)
-    UIDropDownMenu_JustifyText(dropdown, "LEFT")
+
+
+    local drop = {}
+    drop = AceGUI:Create("Dropdown")
+    drop:SetList(BlacklistPopupWindowOptions)
+    drop:SetRelativeWidth(0.5)
+    drop:SetValue(1)
+    drop:SetLabel("Reason:")
+    drop:SetCallback("OnValueChanged", function(this, event, item)
+        print(item)
+    end
+    )
+    drop.frame:SetParent(container)
+    drop.frame:Show()
+    drop.frame:SetPoint("LEFT", container, "TOPLEFT", 20, -40)
+
+    local noteLabel = container:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
+    noteLabel:SetPoint("LEFT", drop.frame, "LEFT", 0, -30)
+    noteLabel:SetTextColor(colorR, colorG, colorB, colorA)
+    noteLabel:SetText("Note (optional):")
+
+    local editBoxContainer = CreateFrame("Frame", nil, container, BackdropTemplateMixin and "BackdropTemplate")
+    editBoxContainer:SetPoint("TOPLEFT", noteLabel, "BOTTOMLEFT", 0, -5)
+    editBoxContainer:SetPoint("BOTTOMRIGHT", container, "BOTTOMRIGHT", -20, 49)
+    editBoxContainer:SetBackdrop(
+        {
+            bgFile = "Interface\\Tooltips\\UI-Tooltip-Background",
+            edgeFile = "Interface\\Tooltips\\UI-Tooltip-Border",
+            tile = true,
+            tileSize = 16,
+            edgeSize = 16,
+            insets = { left = 4, right = 3, top = 4, bottom = 3 }
+        })
+    editBoxContainer:SetBackdropColor(0, 0, 0, 0.9)
+
+    local editbox = CreateFrame("EditBox", "NoteEditBox", container)
+    editbox:SetPoint("TOPLEFT", editBoxContainer, "TOPLEFT", 5, -6)
+    editbox:SetPoint("BOTTOMRIGHT", editBoxContainer, "BOTTOMRIGHT", 0, 0)
+    editbox:SetFontObject("ChatFontNormal")
+    editbox:SetMultiLine(true)
+    editbox:SetAutoFocus(true)
+    editbox:SetMaxLetters(112)
+    editbox:SetScript("OnShow", function(this) editbox:SetFocus() end)
 end
 
 function PersonalPlayerBlacklist:PrintPlayers()
@@ -175,12 +214,15 @@ end
 
 function PersonalPlayerBlacklist:SavePlayer(playerName, playerServer)
     if not self.db.global.blacklistedPlayers then self.db.global.blacklistedPlayers = {} end
-    self.db.global.blacklistedPlayers[playerName .. "-" .. playerServer] = {
-        ["name"] = playerName,
-        ["server"] =
-            playerServer,
-        ["reason"] = ""
-    }
+    if self.db.profile.ShowPopup then
+        PersonalPlayerBlacklist:ShowBlacklistPopupWindow()
+    else
+        self.db.global.blacklistedPlayers[playerName .. "-" .. playerServer] = {
+            ["name"] = playerName,
+            ["server"] = playerServer,
+            ["reason"] = ""
+        }
+    end
 end
 
 function PersonalPlayerBlacklist:RemovePlayer(name)
