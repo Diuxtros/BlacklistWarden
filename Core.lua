@@ -48,6 +48,8 @@ LibStub("AceConfig-3.0"):RegisterOptionsTable(addon.addonName, options, { "PPB",
 
 local aceDialog = LibStub("AceConfigDialog-3.0");
 local AceGUI = LibStub("AceGUI-3.0")
+local blacklistPopupWindow = nil;
+local playerName, playerServer, playerClass, reason, notes = nil, nil, nil, nil, nil;
 
 function PersonalPlayerBlacklist:OnInitialize()
     self:RegisterChatCommand("personalplayerblacklist", "SlashCommand")
@@ -56,6 +58,10 @@ function PersonalPlayerBlacklist:OnInitialize()
     LibStub("AceConfig-3.0"):RegisterOptionsTable(addon.addonName, options)
     self.optionsFrame = aceDialog:AddToBlizOptions(addon.addonName, addon.addonName)
     self:RegisterEvent("GROUP_ROSTER_UPDATE", "CheckPlayersOnGroupUpdate");
+end
+
+function PersonalPlayerBlacklist:OnEnable()
+    blacklistPopupWindow = PersonalPlayerBlacklist:CreateBlacklistPopupWindow();
 end
 
 function PersonalPlayerBlacklist:CheckPlayersOnGroupUpdate()
@@ -80,12 +86,80 @@ function PersonalPlayerBlacklist:SlashCommand(msg)
     if not msg or msg:trim() == "" then
         Settings.OpenToCategory("PersonalPlayerBlacklist")
     else
-        PersonalPlayerBlacklist:ShowBlacklistPopupWindow()
+        PersonalPlayerBlacklist:CreateBlacklistWarningWindow()
         --PersonalPlayerBlacklist:PrintPlayers()
     end
 end
 
-function PersonalPlayerBlacklist:ShowBlacklistPopupWindow()
+
+function PersonalPlayerBlacklist:CreateStandardButton(text, width, parent)
+    local button = {}
+    button = AceGUI:Create("Button")
+    button:SetText(text)
+    button:SetWidth(width)
+    button.frame:SetParent(parent)
+    button.frame:Show()
+    return button;
+end
+
+function PersonalPlayerBlacklist:CreateBlacklistWarningWindow(playername)
+    local container = CreateFrame("Frame", "BlacklistPopupWindow", UIParent,
+        BackdropTemplateMixin and "BackdropTemplate")
+    container:SetFrameStrata("DIALOG")
+    container:SetToplevel(true)
+    container:SetWidth(280)
+    container:SetHeight(130)
+    container:SetPoint("CENTER", UIParent)
+    container:SetScale(1 / UIParent:GetScale())
+    container:SetBackdrop(
+        {
+            bgFile = "Interface\\ChatFrame\\ChatFrameBackground",
+            edgeFile = "Interface\\DialogFrame\\UI-DialogBox-Border",
+            tile = true,
+            tileSize = 32,
+            edgeSize = 15,
+            insets = { left = 2, right = 2, top = 2, bottom = 2 }
+        })
+    container:SetBackdropColor(0, 0, 0, 0.5)
+    container:SetMovable(true)
+    container:RegisterForDrag("LeftButton")
+    container:SetScript("OnDragStart",
+        function(this, button)
+            this:StartMoving()
+        end)
+    container:SetScript("OnDragStop",
+        function(this)
+            this:StopMovingOrSizing()
+        end)
+    container:EnableMouse(true)
+
+
+
+    local savebutton = PersonalPlayerBlacklist:CreateStandardButton("Leave", 100, container)
+    savebutton:SetCallback("OnClick", function(this)
+        C_PartyInfo.LeaveParty()
+        this.frame:GetParent():Hide()
+    end)
+    savebutton.frame:SetPoint("BOTTOM", container, "BOTTOM", -60, 20)
+
+    local colorR, colorG, colorB, colorA = savebutton.frame:GetNormalFontObject():GetTextColor()
+
+
+    local cancelbutton = PersonalPlayerBlacklist:CreateStandardButton("Stay", 100, container)
+    cancelbutton:SetCallback("OnClick", function(this) this.frame:GetParent():Hide(); end)
+    cancelbutton.frame:SetPoint("BOTTOM", container, "BOTTOM", 60, 20)
+
+
+
+    local title = container:CreateFontString(nil, "OVERLAY", "GameFontHighlight")
+    title:SetPoint("TOPLEFT", container, "TOPLEFT", 5, -10)
+    title:SetPoint("BOTTOMRIGHT", container, "BOTTOMRIGHT", -5, 50)
+    title:SetText("The following player is in your blacklist:\n\n |cffd80000Diuxtros-Icecrown|r\n\nReason: Bad player")
+    title:SetTextColor(colorR, colorG, colorB, colorA)
+end
+
+
+function PersonalPlayerBlacklist:CreateBlacklistPopupWindow()
     local container = CreateFrame("Frame", "BlacklistPopupWindow", UIParent,
         BackdropTemplateMixin and "BackdropTemplate")
     container:SetFrameStrata("DIALOG")
@@ -103,7 +177,7 @@ function PersonalPlayerBlacklist:ShowBlacklistPopupWindow()
             edgeSize = 15,
             insets = { left = 2, right = 2, top = 2, bottom = 2 }
         })
-    container:SetBackdropColor(0, 0, 0, 1)
+    container:SetBackdropColor(0, 0, 0, 0.5)
     container:SetMovable(true)
     container:RegisterForDrag("LeftButton")
     container:SetScript("OnDragStart",
@@ -116,23 +190,20 @@ function PersonalPlayerBlacklist:ShowBlacklistPopupWindow()
         end)
     container:EnableMouse(true)
 
-    local savebutton = CreateFrame("Button", nil, container, "UIPanelButtonTemplate")
-    savebutton:SetText("Save")
-    savebutton:SetWidth(100)
-    savebutton:SetHeight(20)
-    savebutton:SetPoint("BOTTOM", container, "BOTTOM", -60, 20)
-    savebutton:SetScript("OnClick",
+    local savebutton = PersonalPlayerBlacklist:CreateStandardButton("Save", 100, container)
+    savebutton.frame:SetPoint("BOTTOM", container, "BOTTOM", -60, 20)
+    savebutton:SetCallback("OnClick",
         function(this)
-            this:GetParent():Hide()
+            notes = container.editbox:GetText()
+            PersonalPlayerBlacklist:WritePlayerToDisk()
+            this.frame:GetParent():Hide()
         end)
-    local colorR, colorG, colorB, colorA = savebutton:GetNormalFontObject():GetTextColor()
 
-    local cancelbutton = CreateFrame("Button", nil, container, "UIPanelButtonTemplate")
-    cancelbutton:SetText("Cancel")
-    cancelbutton:SetWidth(100)
-    cancelbutton:SetHeight(20)
-    cancelbutton:SetPoint("BOTTOM", container, "BOTTOM", 60, 20)
-    cancelbutton:SetScript("OnClick", function(this) this:GetParent():Hide(); end)
+    local colorR, colorG, colorB, colorA = savebutton.frame:GetNormalFontObject():GetTextColor()
+
+    local cancelbutton = PersonalPlayerBlacklist:CreateStandardButton("Cancel", 100, container)
+    cancelbutton.frame:SetPoint("BOTTOM", container, "BOTTOM", 60, 20)
+    cancelbutton:SetCallback("OnClick", function(this) this.frame:GetParent():Hide(); end)
 
 
     local title = container:CreateFontString(nil, "OVERLAY", "GameFontHighlight")
@@ -149,7 +220,7 @@ function PersonalPlayerBlacklist:ShowBlacklistPopupWindow()
     drop:SetValue(1)
     drop:SetLabel("Reason:")
     drop:SetCallback("OnValueChanged", function(this, event, item)
-        print(item)
+        reason = BlacklistPopupWindowOptions[item]
     end
     )
     drop.frame:SetParent(container)
@@ -173,16 +244,20 @@ function PersonalPlayerBlacklist:ShowBlacklistPopupWindow()
             edgeSize = 16,
             insets = { left = 4, right = 3, top = 4, bottom = 3 }
         })
-    editBoxContainer:SetBackdropColor(0, 0, 0, 0.9)
+    editBoxContainer:SetBackdropColor(0, 0, 0, 0.6)
 
     local editbox = CreateFrame("EditBox", "NoteEditBox", container)
     editbox:SetPoint("TOPLEFT", editBoxContainer, "TOPLEFT", 5, -6)
-    editbox:SetPoint("BOTTOMRIGHT", editBoxContainer, "BOTTOMRIGHT", 0, 0)
+    editbox:SetPoint("BOTTOMRIGHT", editBoxContainer, "BOTTOMRIGHT", -5, 0)
     editbox:SetFontObject("ChatFontNormal")
     editbox:SetMultiLine(true)
-    editbox:SetAutoFocus(true)
+    editbox:SetAutoFocus(false)
     editbox:SetMaxLetters(112)
-    editbox:SetScript("OnShow", function(this) editbox:SetFocus() end)
+    --editbox:SetScript("OnShow", function(this) editbox:SetFocus() end)
+    container.editbox = editbox;
+    container:Hide()
+
+    return container;
 end
 
 function PersonalPlayerBlacklist:PrintPlayers()
@@ -190,17 +265,30 @@ function PersonalPlayerBlacklist:PrintPlayers()
     for key, value in pairs(self.db.global.blacklistedPlayers) do
         local name = "";
         local server = "";
+        local class = "";
         local reason = "";
+        local note = "";
+        local date = "";
         if value["name"] then
             name = value["name"]
         end
         if value["server"] then
             server = value["server"]
         end
+        if value["class"] then
+            class = value["class"]
+        end
         if value["reason"] then
             reason = value["reason"]
         end
-        print(key .. " : " .. name .. "-" .. server .. ":" .. reason);
+        if value["notes"] then
+            note = value["notes"]
+        end
+        if value["date"] then
+            date = value["date"]
+        end
+        print(key .. " : " .. name .. " - " .. server .. " - " .. class ..
+            " - " .. reason .. " - " .. note .. " - " .. date);
     end
 end
 
@@ -212,16 +300,26 @@ function PersonalPlayerBlacklist:SetShowPopup(info, value)
     self.db.profile.ShowPopup = value;
 end
 
-function PersonalPlayerBlacklist:SavePlayer(playerName, playerServer)
-    if not self.db.global.blacklistedPlayers then self.db.global.blacklistedPlayers = {} end
+function PersonalPlayerBlacklist:WritePlayerToDisk()
+    self.db.global.blacklistedPlayers[playerName .. "-" .. playerServer] = {
+        ["name"] = playerName,
+        ["server"] = playerServer,
+        ["class"] = playerClass,
+        ["reason"] = reason,
+        ["notes"] = notes,
+        ["date"] = date("%m/%d/%y"),
+    }
+    print("|cffFF0000" .. playerName .. "|r added to blacklist.")
+    playerName, playerServer, playerClass, reason, notes = nil, nil, nil, nil, nil;
+end
+
+function PersonalPlayerBlacklist:BlacklistButton()
     if self.db.profile.ShowPopup then
-        PersonalPlayerBlacklist:ShowBlacklistPopupWindow()
+        blacklistPopupWindow:Show()
     else
-        self.db.global.blacklistedPlayers[playerName .. "-" .. playerServer] = {
-            ["name"] = playerName,
-            ["server"] = playerServer,
-            ["reason"] = ""
-        }
+        reason = BlacklistPopupWindowOptions[1]
+        notes = ""
+        PersonalPlayerBlacklist:WritePlayerToDisk();
     end
 end
 
@@ -254,31 +352,50 @@ do
 
     function module:MenuHandler(owner, rootDescription, contextData)
         if not IsValidName(contextData) then return end
-        rootDescription:CreateDivider();
-        rootDescription:CreateTitle(addon.addonTitle);
+        playerName, playerServer, playerClass, reason, notes = nil, nil, nil, nil, nil;
+
         local popupText = "";
-        local notification = "";
-        -- for key, value in pairs(contextData) do
-        --      print(key..":"..tostring(value))
-        -- end
+
+
         local realm = GetRealmName()
-        if not contextData.server then contextData.server = realm end
-        local playername = contextData.name .. "-" .. contextData.server;
-        local isOnList = PersonalPlayerBlacklist:IsPlayerInList(playername);
+        if not contextData.server then
+            playerServer = realm
+        else
+            playerServer = contextData.server
+        end
+        playerName = contextData.name;
+        local fullName = playerName .. "-" .. playerServer
+        local isOnList = PersonalPlayerBlacklist:IsPlayerInList(fullName);
+        local name = UnitName("player")
+        if fullName == name .. "-" .. realm then return end
+        local guid
+
+        if contextData.lineID then
+            guid = C_ChatInfo.GetChatLineSenderGUID(contextData.lineID)
+        elseif contextData.unit then
+            guid = UnitGUID(contextData.unit)
+        else
+            return
+        end
+
+        local localizedClass, englishClass, localizedRace, englishRace, sex, name, realm = GetPlayerInfoByGUID(guid)
+        playerClass = localizedClass
+
         if not isOnList then
-            popupText = "|cffFF0000Blacklist player|r"
-            notification = "|cffFF0000" .. playername .. "|r added to blacklist.";
+            popupText = "|cffd80000Blacklist player|r"
         else
             popupText = "|cFF00FF00Remove from blacklist|r"
-            notification = "|cFF00FF00" .. playername .. "|r removed from blacklist.";
         end
+
+        rootDescription:CreateDivider();
+        rootDescription:CreateTitle(addon.addonTitle);
         rootDescription:CreateButton(popupText, function()
             if not isOnList then
-                PersonalPlayerBlacklist:SavePlayer(contextData.name, contextData.server);
+                PersonalPlayerBlacklist:BlacklistButton()
             else
-                PersonalPlayerBlacklist:RemovePlayer(playername)
+                PersonalPlayerBlacklist:RemovePlayer(fullName)
+                print("|cFF00FF00" .. fullName .. "|r removed from blacklist.")
             end
-            print(notification);
             --PrintTableContents(contextData)
         end)
     end
