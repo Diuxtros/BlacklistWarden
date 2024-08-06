@@ -12,4 +12,5 @@ embeds.xml
 
 
 Core.lua
+Widgets.lua
 
