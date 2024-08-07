@@ -4,7 +4,7 @@ addon.addonName = "PersonalPlayerBlacklist"
 addon.addonTitle = "Personal Player Blacklist"
 PersonalPlayerBlacklist = LibStub("AceAddon-3.0"):NewAddon(addon.addonName, "AceConsole-3.0", "AceHook-3.0",
     "AceEvent-3.0", "AceTimer-3.0")
-local LDB = LibStub("LibDataBroker-1.1"):NewDataObject("Bunnies", {
+local LDB = LibStub("LibDataBroker-1.1"):NewDataObject("PersonalPlayerBlacklist", {
     type = "data source",
     text = "PPB",
     icon = "Interface\\Icons\\INV_Chest_Cloth_17",
@@ -78,6 +78,13 @@ local defaults = {
             ofsx = 0,
             ofsy = -100,
         },
+        listFrame = {
+            point = "CENTER",
+            relativeFrame = nil,
+            relativePoint = "CENTER",
+            ofsx = 0,
+            ofsy = 0,
+        },
     }
 }
 
@@ -133,8 +140,7 @@ function PersonalPlayerBlacklist:SlashCommand(msg)
     if not msg or msg:trim() == "" then
         Settings.OpenToCategory("PersonalPlayerBlacklist")
     else
-        PersonalPlayerBlacklist:CreateBlacklistWarningWindow()
-        PersonalPlayerBlacklist:PrintPlayers()
+        PersonalPlayerBlacklist:CreateListFrame()
     end
 end
 

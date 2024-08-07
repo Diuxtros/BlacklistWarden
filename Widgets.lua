@@ -11,24 +11,9 @@ function PersonalPlayerBlacklist:CreateStandardButton(text, width, parent)
 end
 
 function PersonalPlayerBlacklist:CreateBlacklistWarningWindow()
-    local container=PersonalPlayerBlacklist:CreateMainFrame("BlacklistWarningWindow",280,130)
+    local container = PersonalPlayerBlacklist:CreateMainFrame("BlacklistWarningWindow", 280, 130)
     local frameConfig = PersonalPlayerBlacklist.db.profile.blacklistWarningFrame
-    container:SetPoint(frameConfig.point,
-        frameConfig.relativeFrame,
-        frameConfig.relativePoint,
-        frameConfig.ofsx,
-        frameConfig.ofsy)
-   
-    container:SetScript("OnDragStop",
-        function(this)
-            this:StopMovingOrSizing()
-            local point, relativeFrame, relativeTo, ofsx, ofsy = container:GetPoint()
-            frameConfig.point = point
-            frameConfig.relativeFrame = relativeFrame
-            frameConfig.relativePoint = relativeTo
-            frameConfig.ofsx = ofsx
-            frameConfig.ofsy = ofsy
-        end)
+    PersonalPlayerBlacklist:HandleFrameConfig(container, frameConfig)
 
 
     local savebutton = PersonalPlayerBlacklist:CreateStandardButton("Leave", 100, container)
@@ -57,7 +42,7 @@ function PersonalPlayerBlacklist:CreateBlacklistWarningWindow()
     return container;
 end
 
-function PersonalPlayerBlacklist:CreateMainFrame(name,width, height)
+function PersonalPlayerBlacklist:CreateMainFrame(name, width, height)
     local container = CreateFrame("Frame", name, UIParent,
         BackdropTemplateMixin and "BackdropTemplate")
     container:SetFrameStrata("DIALOG")
@@ -85,9 +70,7 @@ function PersonalPlayerBlacklist:CreateMainFrame(name,width, height)
     return container
 end
 
-function PersonalPlayerBlacklist:CreateBlacklistPopupWindow()
-    local container=PersonalPlayerBlacklist:CreateMainFrame("BlacklistPopupWindow",250,200)
-    local frameConfig = PersonalPlayerBlacklist.db.profile.blacklistPopupFrame
+function PersonalPlayerBlacklist:HandleFrameConfig(container, frameConfig)
     container:SetPoint(frameConfig.point,
         frameConfig.relativeFrame,
         frameConfig.relativePoint,
@@ -104,6 +87,12 @@ function PersonalPlayerBlacklist:CreateBlacklistPopupWindow()
             frameConfig.ofsx = ofsx
             frameConfig.ofsy = ofsy
         end)
+end
+
+function PersonalPlayerBlacklist:CreateBlacklistPopupWindow()
+    local container = PersonalPlayerBlacklist:CreateMainFrame("BlacklistPopupWindow", 250, 200)
+    local frameConfig = PersonalPlayerBlacklist.db.profile.blacklistPopupFrame
+    PersonalPlayerBlacklist:HandleFrameConfig(container, frameConfig)
 
 
     local savebutton = PersonalPlayerBlacklist:CreateStandardButton("Save", 100, container)
@@ -121,8 +110,8 @@ function PersonalPlayerBlacklist:CreateBlacklistPopupWindow()
     cancelbutton.frame:SetPoint("BOTTOM", container, "BOTTOM", 60, 15)
     cancelbutton:SetCallback("OnClick", function(this) this.frame:GetParent():Hide(); end)
 
-    local titleBg= CreateFrame("Frame", "titleBG", container,
-    BackdropTemplateMixin and "BackdropTemplate")
+    local titleBg = CreateFrame("Frame", "titleBG", container,
+        BackdropTemplateMixin and "BackdropTemplate")
     titleBg:SetWidth(150)
     titleBg:SetHeight(30)
     titleBg:SetBackdrop(
@@ -134,7 +123,7 @@ function PersonalPlayerBlacklist:CreateBlacklistPopupWindow()
             edgeSize = 15,
             insets = { left = 2, right = 2, top = 2, bottom = 2 }
         })
-        titleBg:SetBackdropColor(0, 0, 0, 0.9)
+    titleBg:SetBackdropColor(0, 0, 0, 0.9)
     titleBg:SetPoint("TOP", container, "TOP", 0, 13)
 
     local title = titleBg:CreateFontString(nil, "OVERLAY", "GameFontHighlight")
@@ -146,7 +135,7 @@ function PersonalPlayerBlacklist:CreateBlacklistPopupWindow()
     playerName:SetPoint("TOP", container, "TOP", 0, -20)
     playerName:SetTextColor(216, 0, 0, 1)
 
-    container.playerName=playerName;
+    container.playerName = playerName;
 
     local drop = {}
     drop = AceGUI:Create("Dropdown")
@@ -162,8 +151,8 @@ function PersonalPlayerBlacklist:CreateBlacklistPopupWindow()
     drop.frame:SetParent(container)
     drop.frame:Show()
     drop.frame:SetPoint("LEFT", container, "TOPLEFT", 20, -50)
-    
-    container.dropdown=drop;
+
+    container.dropdown = drop;
     local noteLabel = container:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
     noteLabel:SetPoint("LEFT", drop.frame, "LEFT", 0, -30)
     noteLabel:SetTextColor(colorR, colorG, colorB, colorA)
@@ -195,4 +184,74 @@ function PersonalPlayerBlacklist:CreateBlacklistPopupWindow()
     container:Hide()
 
     return container;
+end
+
+function PersonalPlayerBlacklist:CreateListFrame()
+    local container = PersonalPlayerBlacklist:CreateMainFrame("ListWindow", 600, 500)
+    local frameConfig = PersonalPlayerBlacklist.db.profile.listFrame
+    PersonalPlayerBlacklist:HandleFrameConfig(container, frameConfig)
+
+    local heading = {}
+    heading = AceGUI:Create("Heading")
+    heading:SetText("List")
+    heading:SetWidth(container:GetWidth() - 5)
+    heading.frame:SetParent(container)
+    heading.frame:SetPoint("TOP", container, "TOP", 0, -10)
+    heading.frame:Show()
+
+    local closebutton = PersonalPlayerBlacklist:CreateStandardButton("Close", 80, container)
+    closebutton.frame:SetPoint("BOTTOMRIGHT", container, "BOTTOMRIGHT", -10, 10)
+    closebutton:SetHeight(20)
+    closebutton:SetCallback("OnClick",
+        function(this)
+            this.frame:GetParent():Hide()
+        end)
+
+    local tabs={
+        {value=1,text="Players"},
+        --{value=2,text="Guilds"},
+       -- {value=3,text="Realms"},
+    }
+    local scrollcontainer = AceGUI:Create("TabGroup")
+    scrollcontainer:SetTitle("Test")
+    scrollcontainer:SetTabs(tabs)
+    scrollcontainer:SetLayout("Fill")
+    scrollcontainer.frame:SetParent(container)
+    scrollcontainer.frame:Show()
+    scrollcontainer:SetPoint("TOPLEFT", container, "TOPLEFT", 10, -30)
+    scrollcontainer:SetPoint("BOTTOMRIGHT", container, "BOTTOMRIGHT", -10, 30)
+    scrollcontainer:SelectTab(1)
+
+
+    local scroll = AceGUI:Create("ScrollFrame")
+    scroll:SetLayout("Flow")     -- probably?
+    scrollcontainer:AddChild(scroll)
+    scroll.frame:Show()
+
+    PersonalPlayerBlacklist:CreateTableLabel("Name", scroll)
+    PersonalPlayerBlacklist:CreateTableLabel("Realm", scroll)
+    PersonalPlayerBlacklist:CreateTableLabel("Class", scroll)
+    PersonalPlayerBlacklist:CreateTableLabel("Reason", scroll)
+    PersonalPlayerBlacklist:CreateTableLabel("Notes", scroll)
+    PersonalPlayerBlacklist:CreateTableLabel("Date", scroll)
+    PersonalPlayerBlacklist:CreateTableLabel("Remove", scroll)
+
+    for key, value in pairs(PersonalPlayerBlacklist.db.global.blacklistedPlayers) do
+        PersonalPlayerBlacklist:CreateTableLabel(value["name"],scroll)
+        PersonalPlayerBlacklist:CreateTableLabel(value["server"],scroll)
+        PersonalPlayerBlacklist:CreateTableLabel(value["class"],scroll)
+        PersonalPlayerBlacklist:CreateTableLabel(value["reason"],scroll)
+        PersonalPlayerBlacklist:CreateTableLabel(value["notes"],scroll)
+        PersonalPlayerBlacklist:CreateTableLabel(value["date"],scroll)
+        PersonalPlayerBlacklist:CreateTableLabel("remove",scroll)
+    end
+end
+
+function PersonalPlayerBlacklist:CreateTableLabel(text, parent)
+    local label = AceGUI:Create("InteractiveLabel")
+    label:SetText(text)
+    label:SetWidth(parent.frame:GetParent():GetWidth()/7-5)
+    label:SetHeight(20)
+    label:SetHighlight("Interface\\Buttons\\UI-Panel-MinimizeButton-Highlight")
+    parent:AddChild(label)
 end
