@@ -59,7 +59,7 @@ function PersonalPlayerBlacklist:CreateMainFrame(name, width, height)
             edgeSize = 15,
             insets = { left = 2, right = 2, top = 2, bottom = 2 }
         })
-    container:SetBackdropColor(0, 0, 0, 0.5)
+    container:SetBackdropColor(0, 0, 0, 0.7)
     container:SetMovable(true)
     container:RegisterForDrag("LeftButton")
     container:SetScript("OnDragStart",
@@ -123,10 +123,10 @@ function PersonalPlayerBlacklist:CreateBlacklistPopupWindow()
             edgeSize = 15,
             insets = { left = 2, right = 2, top = 2, bottom = 2 }
         })
-    titleBg:SetBackdropColor(0, 0, 0, 0.9)
+    titleBg:SetBackdropColor(0, 0, 0,1)
     titleBg:SetPoint("TOP", container, "TOP", 0, 13)
 
-    local title = titleBg:CreateFontString(nil, "OVERLAY", "GameFontHighlight")
+    local title = titleBg:CreateFontString(nil, "OVERLAY", "GameFontNormal")
     title:SetPoint("CENTER", titleBg, "CENTER", 0, 0)
     title:SetText("Add to Blacklist")
     title:SetTextColor(colorR, colorG, colorB, colorA)
