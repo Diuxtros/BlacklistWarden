@@ -126,8 +126,8 @@ function PersonalPlayerBlacklist:CheckPlayersOnGroupUpdate()
                 local fullname = name .. "-" .. realm;
                 if PersonalPlayerBlacklist:IsPlayerInList(fullname) then
                     blacklistPopupWarning.title:SetText("The following player is in your blacklist:\n\n |cffd80000" ..
-                    fullname ..
-                    "|r\n\nReason: " .. PersonalPlayerBlacklist.db.global.blacklistedPlayers[fullname]["reason"])
+                        fullname ..
+                        "|r\n\nReason: " .. PersonalPlayerBlacklist.db.global.blacklistedPlayers[fullname]["reason"])
                     blacklistPopupWarning:Show()
                 end
             end
@@ -219,6 +219,8 @@ function PersonalPlayerBlacklist:BlacklistButton()
     if PersonalPlayerBlacklist.db.profile.showPopup then
         blacklistPopupWindow.playerName:SetText(playerInfo["playerName"] .. "-" .. playerInfo["playerServer"])
         blacklistPopupWindow.dropdown:SetValue(1)
+        PersonalPlayerBlacklist:SavePlayerInfoValue("reason",
+        PersonalPlayerBlacklist.db.global.blacklistPopupWindowOptions[1])
         blacklistPopupWindow.editbox:SetText("")
         blacklistPopupWindow:Show()
     else
@@ -255,36 +257,48 @@ do
     end
 
 
-
     function module:MenuHandler(owner, rootDescription, contextData)
-        if not IsValidName(contextData) then return end
+        local realm;
+        local name;
+        local localizedClass;
+        local _;
+        if not contextData then
+            if rootDescription.tag == "MENU_LFG_FRAME_SEARCH_ENTRY" or rootDescription.tag == "MENU_LFG_FRAME_MEMBER_APPLY" then
+                name, realm, localizedClass= self:GetLFGInfo(owner)
+            end
+        else
+            if not IsValidName(contextData) then return end
+            if not contextData.server then
+                realm = GetRealmName()
+            else
+                realm = contextData.server
+            end
+            name = contextData.name
+            local guid
+
+            if contextData.lineID then
+                guid = C_ChatInfo.GetChatLineSenderGUID(contextData.lineID)
+            elseif contextData.unit then
+                guid = UnitGUID(contextData.unit)
+            else
+                return
+            end
+    
+            localizedClass, _, _, _, _, _ = GetPlayerInfoByGUID(guid)
+        end
+
+
 
         local popupText = "";
 
 
-        local realm;
-        if not contextData.server then
-            realm = GetRealmName()
-        else
-            realm = contextData.server
-        end
         PersonalPlayerBlacklist:SavePlayerInfoValue("playerServer", realm)
-        PersonalPlayerBlacklist:SavePlayerInfoValue("playerName", contextData.name)
+        PersonalPlayerBlacklist:SavePlayerInfoValue("playerName", name)
         local fullName = playerInfo["playerName"] .. "-" .. playerInfo["playerServer"]
         local isOnList = PersonalPlayerBlacklist:IsPlayerInList(fullName);
-        local name = UnitName("player")
-        if fullName == name .. "-" .. realm then return end
-        local guid
+        local playername = UnitName("player")
+        if fullName == playername .. "-" .. realm then return end
 
-        if contextData.lineID then
-            guid = C_ChatInfo.GetChatLineSenderGUID(contextData.lineID)
-        elseif contextData.unit then
-            guid = UnitGUID(contextData.unit)
-        else
-            return
-        end
-
-        local localizedClass, englishClass, localizedRace, englishRace, sex, name, realm = GetPlayerInfoByGUID(guid)
         PersonalPlayerBlacklist:SavePlayerInfoValue("playerClass", localizedClass)
         if not isOnList then
             popupText = "|cffd80000Blacklist player|r"
@@ -301,7 +315,6 @@ do
                 PersonalPlayerBlacklist:RemovePlayer(fullName)
                 print("|cFF00FF00" .. fullName .. "|r removed from blacklist.")
             end
-            --PrintTableContents(contextData)
         end)
     end
 
@@ -318,11 +331,58 @@ do
             ["MENU_UNIT_COMMUNITIES_GUILD_MEMBER"] = true,
             ["MENU_UNIT_COMMUNITIES_MEMBER"] = true,
             ["MENU_LFG_FRAME_SEARCH_ENTRY"] = true,
+            ["MENU_LFG_FRAME_MEMBER_APPLY"] = true,
         }
 
         for tag, enabled in pairs(menuTags) do
             Menu.ModifyMenu(tag, GenerateClosure(self.MenuHandler, self))
         end
+    end
+
+    function module:GetLFGInfo(owner)
+        local resultID = owner.resultID
+        if resultID then
+            local searchResultInfo = C_LFGList.GetSearchResultInfo(resultID)
+            local name, realm = self:FormatName(searchResultInfo.leaderName)
+            local _, localizedClass, isLeader
+            for i = 1, searchResultInfo.numMembers do
+                _, _, localizedClass, _, isLeader = C_LFGList.GetSearchResultMemberInfo(resultID, i)
+                if isLeader then
+                    break
+                end
+            end
+            return name, realm, localizedClass
+        end
+        local memberIdx = owner.memberIdx
+        if not memberIdx then
+            return
+        end
+        local parent = owner:GetParent()
+        if not parent then
+            return
+        end
+        local applicantID = parent.applicantID
+        if not applicantID then
+            return
+        end
+        local fullName, class, localizedClass = C_LFGList.GetApplicantMemberInfo(applicantID, memberIdx)
+        local name, realm = self:FormatName(fullName)
+
+        return name, realm, localizedClass
+    end
+
+    function module:FormatName(fullname)
+        local name, realm
+        if fullname:find("-", nil, true) then
+            name, realm = strsplit("-", fullname)
+        else
+            name = fullname
+        end
+        if not realm or realm == "" then
+            realm = GetRealmName()
+        end
+
+        return name, realm
     end
 
     function module:Setup()
