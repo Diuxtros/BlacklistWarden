@@ -32,7 +32,7 @@ function PersonalPlayerBlacklist:CreateBlacklistWarningWindow()
 
 
 
-    local title = container:CreateFontString(nil, "OVERLAY", "GameFontHighlight")
+    local title = container:CreateFontString(nil, "OVERLAY", "GameFontNormal")
     title:SetPoint("TOPLEFT", container, "TOPLEFT", 5, -10)
     title:SetPoint("BOTTOMRIGHT", container, "BOTTOMRIGHT", -5, 50)
     title:SetTextColor(colorR, colorG, colorB, colorA)
