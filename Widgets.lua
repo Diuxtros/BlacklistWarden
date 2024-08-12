@@ -187,7 +187,7 @@ function PersonalPlayerBlacklist:CreateBlacklistPopupWindow()
 end
 
 function PersonalPlayerBlacklist:CreateListFrame()
-    local container = PersonalPlayerBlacklist:CreateMainFrame("ListWindow", 600, 500)
+    local container = PersonalPlayerBlacklist:CreateMainFrame("ListWindow", 800, 500)
     local frameConfig = PersonalPlayerBlacklist.db.profile.listFrame
     PersonalPlayerBlacklist:HandleFrameConfig(container, frameConfig)
 
@@ -228,29 +228,30 @@ function PersonalPlayerBlacklist:CreateListFrame()
     scrollcontainer:AddChild(scroll)
     scroll.frame:Show()
 
-    PersonalPlayerBlacklist:CreateTableLabel("Name", scroll)
-    PersonalPlayerBlacklist:CreateTableLabel("Realm", scroll)
-    PersonalPlayerBlacklist:CreateTableLabel("Class", scroll)
-    PersonalPlayerBlacklist:CreateTableLabel("Reason", scroll)
-    PersonalPlayerBlacklist:CreateTableLabel("Notes", scroll)
-    PersonalPlayerBlacklist:CreateTableLabel("Date", scroll)
-    PersonalPlayerBlacklist:CreateTableLabel("Remove", scroll)
+    local parentWidth=scrollcontainer.frame:GetWidth()
+    PersonalPlayerBlacklist:CreateTableLabel("Name", scroll,parentWidth*0.15)
+    PersonalPlayerBlacklist:CreateTableLabel("Realm", scroll,parentWidth*0.15)
+    PersonalPlayerBlacklist:CreateTableLabel("Class", scroll,parentWidth*0.1)
+    PersonalPlayerBlacklist:CreateTableLabel("Reason", scroll,parentWidth*0.1)
+    PersonalPlayerBlacklist:CreateTableLabel("Date", scroll,parentWidth*0.1)
+    PersonalPlayerBlacklist:CreateTableLabel("Notes", scroll,parentWidth*0.3)
+
 
     for key, value in pairs(PersonalPlayerBlacklist.db.global.blacklistedPlayers) do
-        PersonalPlayerBlacklist:CreateTableLabel(value["name"],scroll)
-        PersonalPlayerBlacklist:CreateTableLabel(value["server"],scroll)
-        PersonalPlayerBlacklist:CreateTableLabel(value["class"],scroll)
-        PersonalPlayerBlacklist:CreateTableLabel(value["reason"],scroll)
-        PersonalPlayerBlacklist:CreateTableLabel(value["notes"],scroll)
-        PersonalPlayerBlacklist:CreateTableLabel(value["date"],scroll)
-        PersonalPlayerBlacklist:CreateTableLabel("remove",scroll)
+        PersonalPlayerBlacklist:CreateTableLabel(value["name"],scroll,parentWidth*0.15)
+        PersonalPlayerBlacklist:CreateTableLabel(value["server"],scroll,parentWidth*0.15)
+        PersonalPlayerBlacklist:CreateTableLabel(value["class"],scroll,parentWidth*0.1)
+        PersonalPlayerBlacklist:CreateTableLabel(value["reason"],scroll,parentWidth*0.1)
+        PersonalPlayerBlacklist:CreateTableLabel(value["date"],scroll,parentWidth*0.1)
+        PersonalPlayerBlacklist:CreateTableLabel(value["notes"],scroll,parentWidth*0.3)
+
     end
 end
 
-function PersonalPlayerBlacklist:CreateTableLabel(text, parent)
+function PersonalPlayerBlacklist:CreateTableLabel(text, parent,width)
     local label = AceGUI:Create("InteractiveLabel")
     label:SetText(text)
-    label:SetWidth(parent.frame:GetParent():GetWidth()/7-5)
+    label:SetWidth(width)
     label:SetHeight(20)
     label:SetHighlight("Interface\\Buttons\\UI-Panel-MinimizeButton-Highlight")
     parent:AddChild(label)
