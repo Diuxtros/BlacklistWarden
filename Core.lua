@@ -201,7 +201,19 @@ end
 function PersonalPlayerBlacklist:SavePlayerInfoValue(key, value)
     playerInfo[key] = value;
 end
+function PersonalPlayerBlacklist:FormatName(fullname)
+    local name, realm
+    if fullname:find("-", nil, true) then
+        name, realm = strsplit("-", fullname)
+    else
+        name = fullname
+    end
+    if not realm or realm == "" then
+        realm = GetRealmName()
+    end
 
+    return name, realm
+end
 function PersonalPlayerBlacklist:WritePlayerToDisk()
     PersonalPlayerBlacklist.db.global.blacklistedPlayers[playerInfo["playerName"] .. "-" .. playerInfo["playerServer"]] = {
         ["name"] = playerInfo["playerName"],
@@ -220,7 +232,7 @@ function PersonalPlayerBlacklist:BlacklistButton()
         blacklistPopupWindow.playerName:SetText(playerInfo["playerName"] .. "-" .. playerInfo["playerServer"])
         blacklistPopupWindow.dropdown:SetValue(1)
         PersonalPlayerBlacklist:SavePlayerInfoValue("reason",
-        PersonalPlayerBlacklist.db.global.blacklistPopupWindowOptions[1])
+            PersonalPlayerBlacklist.db.global.blacklistPopupWindowOptions[1])
         blacklistPopupWindow.editbox:SetText("")
         blacklistPopupWindow:Show()
     else
@@ -244,6 +256,45 @@ function PersonalPlayerBlacklist:IsPlayerInList(name)
     end
 end
 
+do 
+    local function  OnTooltipSetUnit(tooltip, data)
+        if tooltip ~= GameTooltip then return end
+    
+        local _, unit = tooltip:GetUnit()
+        if unit and UnitIsPlayer(unit) and not UnitIsUnit(unit, "player") then
+            local name, realm = UnitName(unit)
+            if not realm then realm = GetRealmName() end
+            local fullname = name .. "-" .. realm;
+            if not PersonalPlayerBlacklist:IsPlayerInList(fullname) then return end
+            local player = PersonalPlayerBlacklist.db.global.blacklistedPlayers[fullname]
+    
+            tooltip:AddLine("BLACKLISTED: |cffFFFFFF" .. player.reason .. "|r", 1, 0, 0, true)
+            if player.notes and player.notes ~= "" then
+            tooltip:AddLine("|cffFFC000Note: |r"..player.notes, 1, 1, 1, true)
+            tooltip:AddLine(" ")
+            end
+        end
+    end
+    local function SetSearchEntry(tooltip, resultID, autoAcceptOption)
+
+        if resultID then
+            local searchResultInfo = C_LFGList.GetSearchResultInfo(resultID)
+            local name, realm = PersonalPlayerBlacklist:FormatName(searchResultInfo.leaderName)
+            if not realm then realm= GetRealmName() end
+            local fullname =name.."-"..realm
+            if not PersonalPlayerBlacklist:IsPlayerInList(fullname) then return end
+            local player = PersonalPlayerBlacklist.db.global.blacklistedPlayers[fullname]
+            tooltip:AddLine(" ")
+            tooltip:AddLine("BLACKLISTED: |cffFFFFFF" .. player.reason .. "|r", 1, 0, 0, true)
+            if player.notes and player.notes ~= "" then
+            tooltip:AddLine("|cffFFC000Note: |r"..player.notes, 1, 1, 1, true)
+            end
+        end
+    end
+    TooltipDataProcessor.AddTooltipPostCall(Enum.TooltipDataType.Unit, OnTooltipSetUnit)
+    hooksecurefunc("LFGListUtil_SetSearchEntryTooltip", SetSearchEntry)
+end
+
 do
     local module = PersonalPlayerBlacklist:NewModule("UnitPopupMenus")
     module.enabled = false
@@ -264,7 +315,7 @@ do
         local _;
         if not contextData then
             if rootDescription.tag == "MENU_LFG_FRAME_SEARCH_ENTRY" or rootDescription.tag == "MENU_LFG_FRAME_MEMBER_APPLY" then
-                name, realm, localizedClass= self:GetLFGInfo(owner)
+                name, realm, localizedClass = self:GetLFGInfo(owner)
             end
         else
             if not IsValidName(contextData) then return end
@@ -283,7 +334,7 @@ do
             else
                 return
             end
-    
+
             localizedClass, _, _, _, _, _ = GetPlayerInfoByGUID(guid)
         end
 
@@ -343,7 +394,7 @@ do
         local resultID = owner.resultID
         if resultID then
             local searchResultInfo = C_LFGList.GetSearchResultInfo(resultID)
-            local name, realm = self:FormatName(searchResultInfo.leaderName)
+            local name, realm = PersonalPlayerBlacklist:FormatName(searchResultInfo.leaderName)
             local _, localizedClass, isLeader
             for i = 1, searchResultInfo.numMembers do
                 _, _, localizedClass, _, isLeader = C_LFGList.GetSearchResultMemberInfo(resultID, i)
@@ -366,23 +417,9 @@ do
             return
         end
         local fullName, class, localizedClass = C_LFGList.GetApplicantMemberInfo(applicantID, memberIdx)
-        local name, realm = self:FormatName(fullName)
+        local name, realm = PersonalPlayerBlacklist:FormatName(fullName)
 
         return name, realm, localizedClass
-    end
-
-    function module:FormatName(fullname)
-        local name, realm
-        if fullname:find("-", nil, true) then
-            name, realm = strsplit("-", fullname)
-        else
-            name = fullname
-        end
-        if not realm or realm == "" then
-            realm = GetRealmName()
-        end
-
-        return name, realm
     end
 
     function module:Setup()
