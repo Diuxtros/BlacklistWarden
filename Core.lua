@@ -201,6 +201,7 @@ end
 function PersonalPlayerBlacklist:SavePlayerInfoValue(key, value)
     playerInfo[key] = value;
 end
+
 function PersonalPlayerBlacklist:FormatName(fullname)
     local name, realm
     if fullname:find("-", nil, true) then
@@ -214,6 +215,7 @@ function PersonalPlayerBlacklist:FormatName(fullname)
 
     return name, realm
 end
+
 function PersonalPlayerBlacklist:WritePlayerToDisk()
     PersonalPlayerBlacklist.db.global.blacklistedPlayers[playerInfo["playerName"] .. "-" .. playerInfo["playerServer"]] = {
         ["name"] = playerInfo["playerName"],
@@ -256,10 +258,20 @@ function PersonalPlayerBlacklist:IsPlayerInList(name)
     end
 end
 
-do 
-    local function  OnTooltipSetUnit(tooltip, data)
+do
+    local function AddToTooltip(tooltip,player)
+        tooltip:AddLine(" ")
+        tooltip:AddLine("BLACKLISTED", 1, 0, 0, false)
+        tooltip:AddLine("|cffFFC000Reason: |r" .. player.reason .. "|r", 1, 1, 1, false)
+        if player.notes and player.notes ~= "" then
+            tooltip:AddLine("|cffFFC000Note: |r" .. player.notes, 1, 1, 1, true)
+            tooltip:AddLine(" ")
+        end
+    end
+
+    local function OnTooltipSetUnit(tooltip, data)
         if tooltip ~= GameTooltip then return end
-    
+
         local _, unit = tooltip:GetUnit()
         if unit and UnitIsPlayer(unit) and not UnitIsUnit(unit, "player") then
             local name, realm = UnitName(unit)
@@ -267,30 +279,79 @@ do
             local fullname = name .. "-" .. realm;
             if not PersonalPlayerBlacklist:IsPlayerInList(fullname) then return end
             local player = PersonalPlayerBlacklist.db.global.blacklistedPlayers[fullname]
-    
-            tooltip:AddLine("BLACKLISTED: |cffFFFFFF" .. player.reason .. "|r", 1, 0, 0, true)
-            if player.notes and player.notes ~= "" then
-            tooltip:AddLine("|cffFFC000Note: |r"..player.notes, 1, 1, 1, true)
-            tooltip:AddLine(" ")
-            end
+
+            AddToTooltip(tooltip,player);
         end
     end
     local function SetSearchEntry(tooltip, resultID, autoAcceptOption)
-
         if resultID then
             local searchResultInfo = C_LFGList.GetSearchResultInfo(resultID)
+            if not searchResultInfo.leaderName then return end
             local name, realm = PersonalPlayerBlacklist:FormatName(searchResultInfo.leaderName)
-            if not realm then realm= GetRealmName() end
-            local fullname =name.."-"..realm
+            if not realm then realm = GetRealmName() end
+            local fullname = name .. "-" .. realm
             if not PersonalPlayerBlacklist:IsPlayerInList(fullname) then return end
             local player = PersonalPlayerBlacklist.db.global.blacklistedPlayers[fullname]
-            tooltip:AddLine(" ")
-            tooltip:AddLine("BLACKLISTED: |cffFFFFFF" .. player.reason .. "|r", 1, 0, 0, true)
-            if player.notes and player.notes ~= "" then
-            tooltip:AddLine("|cffFFC000Note: |r"..player.notes, 1, 1, 1, true)
+
+            AddToTooltip(tooltip,player)
+        end
+    end
+
+    local hooked = {}
+
+    local function OnEnterHook(self)
+        if self.applicantID and self.Members then
+            for i = 1, #self.Members do
+                local b = self.Members[i]
+                if not hooked[b] then
+                    hooked[b] = 1
+                    b:HookScript("OnEnter", OnEnterHook)
+                end
+            end
+        elseif self.memberIdx then
+            local fullName = C_LFGList.GetApplicantMemberInfo(self:GetParent().applicantID, self.memberIdx)
+            if fullName then
+                local hasOwner = GameTooltip:GetOwner()
+                if not hasOwner then
+                    GameTooltip:SetOwner(self, "ANCHOR_TOPLEFT", 0, 0)
+                end
+                local name, realm = PersonalPlayerBlacklist:FormatName(fullName)
+                fullName = name .. "-" .. realm;
+                if not PersonalPlayerBlacklist:IsPlayerInList(fullName) then return end
+                local player = PersonalPlayerBlacklist.db.global.blacklistedPlayers[fullName]
+                --GameTooltip:SetPoint("TOPLEFT", self, "TOPRIGHT", 0, 0)
+                AddToTooltip(GameTooltip,player)
+                GameTooltip:Show()
             end
         end
     end
+
+    hooksecurefunc("LFGListApplicationViewer_UpdateResults", function(self)
+        local scrollBox = LFGListFrame.ApplicationViewer.ScrollBox
+        if scrollBox.buttons then
+            for i = 1, #scrollBox.buttons do
+                local button = scrollBox.buttons[i]
+                if not hooked[button] then
+                    button:HookScript("OnEnter", OnEnterHook)
+                    hooked[button] = true
+                end
+            end
+        end
+
+
+        local frames = scrollBox:GetFrames()
+        if frames and frames[1] then
+            for i = 1, #frames do
+                local button = frames[i]
+                if not hooked[button] then
+                    button:HookScript("OnEnter", OnEnterHook)
+                    hooked[button] = true
+                end
+            end
+        end
+    end)
+
+
     TooltipDataProcessor.AddTooltipPostCall(Enum.TooltipDataType.Unit, OnTooltipSetUnit)
     hooksecurefunc("LFGListUtil_SetSearchEntryTooltip", SetSearchEntry)
 end

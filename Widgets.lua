@@ -123,7 +123,7 @@ function PersonalPlayerBlacklist:CreateBlacklistPopupWindow()
             edgeSize = 15,
             insets = { left = 2, right = 2, top = 2, bottom = 2 }
         })
-    titleBg:SetBackdropColor(0, 0, 0,1)
+    titleBg:SetBackdropColor(0, 0, 0, 1)
     titleBg:SetPoint("TOP", container, "TOP", 0, 13)
 
     local title = titleBg:CreateFontString(nil, "OVERLAY", "GameFontNormal")
@@ -185,7 +185,7 @@ function PersonalPlayerBlacklist:CreateBlacklistPopupWindow()
 
     return container;
 end
-
+local  FilterScrollButtons = {}
 function PersonalPlayerBlacklist:CreateListFrame()
     local container = PersonalPlayerBlacklist:CreateMainFrame("ListWindow", 800, 500)
     local frameConfig = PersonalPlayerBlacklist.db.profile.listFrame
@@ -207,10 +207,10 @@ function PersonalPlayerBlacklist:CreateListFrame()
             this.frame:GetParent():Hide()
         end)
 
-    local tabs={
-        {value=1,text="Players"},
+    local tabs = {
+        { value = 1, text = "Players" },
         --{value=2,text="Guilds"},
-       -- {value=3,text="Realms"},
+        -- {value=3,text="Realms"},
     }
     local scrollcontainer = AceGUI:Create("TabGroup")
     scrollcontainer:SetTitle("Test")
@@ -223,36 +223,102 @@ function PersonalPlayerBlacklist:CreateListFrame()
     scrollcontainer:SelectTab(1)
 
 
+
+
     local scroll = AceGUI:Create("ScrollFrame")
-    scroll:SetLayout("Flow")     -- probably?
+    scroll:SetLayout("List") -- probably?
     scrollcontainer:AddChild(scroll)
     scroll.frame:Show()
 
-    local parentWidth=scrollcontainer.frame:GetWidth()
-    PersonalPlayerBlacklist:CreateTableLabel("Name", scroll,parentWidth*0.15)
-    PersonalPlayerBlacklist:CreateTableLabel("Realm", scroll,parentWidth*0.15)
-    PersonalPlayerBlacklist:CreateTableLabel("Class", scroll,parentWidth*0.1)
-    PersonalPlayerBlacklist:CreateTableLabel("Reason", scroll,parentWidth*0.1)
-    PersonalPlayerBlacklist:CreateTableLabel("Date", scroll,parentWidth*0.1)
-    PersonalPlayerBlacklist:CreateTableLabel("Notes", scroll,parentWidth*0.3)
 
-
+    
+    FilterScrollButtons = {}
+    --PersonalPlayerBlacklist:CreateTableButton(scrollcontainer.frame,1);
+    local index = 2
     for key, value in pairs(PersonalPlayerBlacklist.db.global.blacklistedPlayers) do
-        PersonalPlayerBlacklist:CreateTableLabel(value["name"],scroll,parentWidth*0.15)
-        PersonalPlayerBlacklist:CreateTableLabel(value["server"],scroll,parentWidth*0.15)
-        PersonalPlayerBlacklist:CreateTableLabel(value["class"],scroll,parentWidth*0.1)
-        PersonalPlayerBlacklist:CreateTableLabel(value["reason"],scroll,parentWidth*0.1)
-        PersonalPlayerBlacklist:CreateTableLabel(value["date"],scroll,parentWidth*0.1)
-        PersonalPlayerBlacklist:CreateTableLabel(value["notes"],scroll,parentWidth*0.3)
-
+        local group= AceGUI:Create("Icon")
+        PersonalPlayerBlacklist:CreateTableButton(group.frame,index,value);
+        scroll:AddChild( group)
+        group:SetImageSize(1, 10) 
+        group.frame:Show()
+        index = index + 1
     end
 end
 
-function PersonalPlayerBlacklist:CreateTableLabel(text, parent,width)
+function PersonalPlayerBlacklist:CreateTableLabel(text, parent, width)
     local label = AceGUI:Create("InteractiveLabel")
     label:SetText(text)
     label:SetWidth(width)
     label:SetHeight(20)
     label:SetHighlight("Interface\\Buttons\\UI-Panel-MinimizeButton-Highlight")
     parent:AddChild(label)
+end
+
+function PersonalPlayerBlacklist:CreateTableButton(parent, index,player)
+
+    if not player then 
+
+        player={}
+        player["name"]="Name"
+        player["server"]="Server"
+        player["class"]="Class"
+        player["reason"]="Reason"
+        player["notes"]="Notes"
+        player["date"]="Date"
+    end
+    FilterScrollButtons[index] = CreateFrame("Button", nil, parent, "IgnoreListButtonTemplate")
+
+    if index == 1 then
+        FilterScrollButtons[index]:SetPoint("TOPLEFT", parent, -1, 0)
+    else
+        FilterScrollButtons[index]:SetPoint("TOPLEFT", parent, -1, 0)
+    end
+
+    FilterScrollButtons[index]:SetSize(800, 20)
+    FilterScrollButtons[index]:RegisterForClicks("LeftButtonUp")
+    --FilterScrollButtons[index]:SetScript("OnClick", FilterScrollClick)
+
+    -- set name style
+    FilterScrollButtons[index].name:SetWidth(100)
+    FilterScrollButtons[index].name:SetText(player["name"])
+    -- set active style
+    FilterScrollButtons[index].realm = FilterScrollButtons[index]:CreateFontString("FontString", "OVERLAY",
+        "GameFontHighlight")
+    FilterScrollButtons[index].realm:SetPoint("LEFT", FilterScrollButtons[index].name, "RIGHT", 10, 0)
+    FilterScrollButtons[index].realm:SetWidth(100)
+    FilterScrollButtons[index].realm:SetJustifyH("LEFT")
+    FilterScrollButtons[index].realm:SetText(player["server"])
+    -- create blocked style
+    FilterScrollButtons[index].class = FilterScrollButtons[index]:CreateFontString("FontString", "OVERLAY",
+        "GameFontHighlight")
+    FilterScrollButtons[index].class:SetPoint("LEFT", FilterScrollButtons[index].realm, "RIGHT", 6, 0)
+    FilterScrollButtons[index].class:SetWidth(100)
+    FilterScrollButtons[index].class:SetJustifyH("LEFT")
+    --FilterScrollButtons[index].class:SetWordWrap(false)
+    FilterScrollButtons[index].class:SetText(player["class"])
+
+    FilterScrollButtons[index].reason = FilterScrollButtons[index]:CreateFontString("FontString", "OVERLAY",
+        "GameFontHighlight")
+    FilterScrollButtons[index].reason:SetPoint("LEFT", FilterScrollButtons[index].class, "RIGHT", 10, 0)
+    FilterScrollButtons[index].reason:SetWidth(70)
+    FilterScrollButtons[index].reason:SetJustifyH("LEFT")
+    FilterScrollButtons[index].reason:SetText(player["reason"])
+
+
+
+FilterScrollButtons[index].date = FilterScrollButtons[index]:CreateFontString("FontString", "OVERLAY",
+"GameFontHighlight")
+FilterScrollButtons[index].date:SetPoint("LEFT", FilterScrollButtons[index].reason, "RIGHT", 10, 0)
+FilterScrollButtons[index].date:SetWidth(70)
+FilterScrollButtons[index].date:SetJustifyH("LEFT")
+FilterScrollButtons[index].date:SetText(player["date"])
+
+FilterScrollButtons[index].notes = FilterScrollButtons[index]:CreateFontString("FontString", "OVERLAY",
+"GameFontHighlight")
+FilterScrollButtons[index].notes:SetPoint("LEFT", FilterScrollButtons[index].date, "RIGHT",10, 0)
+FilterScrollButtons[index].notes:SetWidth(240)
+FilterScrollButtons[index].notes:SetJustifyH("LEFT")
+FilterScrollButtons[index].notes:SetText(player["notes"])
+    -- create filter style
+
 end
