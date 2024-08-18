@@ -95,6 +95,7 @@ local aceDialog = LibStub("AceConfigDialog-3.0");
 
 local blacklistPopupWindow = nil;
 local blacklistPopupWarning = nil;
+local blacklistListWindow = nil;
 local playerInfo = {}
 function PersonalPlayerBlacklist:OnInitialize()
     self:RegisterChatCommand("personalplayerblacklist", "SlashCommand")
@@ -109,6 +110,7 @@ end
 function PersonalPlayerBlacklist:OnEnable()
     blacklistPopupWindow = PersonalPlayerBlacklist:CreateBlacklistPopupWindow();
     blacklistPopupWarning = PersonalPlayerBlacklist:CreateBlacklistWarningWindow();
+    blacklistListWindow=PersonalPlayerBlacklist:CreateListFrame();
 end
 
 function PersonalPlayerBlacklist:CheckPlayersOnGroupUpdate()
@@ -140,7 +142,7 @@ function PersonalPlayerBlacklist:SlashCommand(msg)
     if not msg or msg:trim() == "" then
         Settings.OpenToCategory("PersonalPlayerBlacklist")
     else
-        PersonalPlayerBlacklist:CreateListFrame()
+        blacklistListWindow:Show()
     end
 end
 
@@ -223,9 +225,10 @@ function PersonalPlayerBlacklist:WritePlayerToDisk()
         ["class"] = playerInfo["playerClass"],
         ["reason"] = playerInfo["reason"],
         ["notes"] = playerInfo["notes"],
-        ["date"] = date("%m/%d/%y"),
+        ["date"] = date("%m/%d/%Y"),
     }
     print("|cffFF0000" .. playerInfo["playerName"] .. "-" .. playerInfo["playerServer"] .. "|r added to blacklist.")
+    blacklistListWindow.addEntry(PersonalPlayerBlacklist.db.global.blacklistedPlayers[playerInfo["playerName"] .. "-" .. playerInfo["playerServer"]])
     playerInfo = {}
 end
 
@@ -372,11 +375,11 @@ do
     function module:MenuHandler(owner, rootDescription, contextData)
         local realm;
         local name;
-        local localizedClass;
+        local class;
         local _;
         if not contextData then
             if rootDescription.tag == "MENU_LFG_FRAME_SEARCH_ENTRY" or rootDescription.tag == "MENU_LFG_FRAME_MEMBER_APPLY" then
-                name, realm, localizedClass = self:GetLFGInfo(owner)
+                name, realm, class = self:GetLFGInfo(owner)
             end
         else
             if not IsValidName(contextData) then return end
@@ -396,7 +399,7 @@ do
                 return
             end
 
-            localizedClass, _, _, _, _, _ = GetPlayerInfoByGUID(guid)
+            _, class, _, _, _, _ = GetPlayerInfoByGUID(guid)
         end
 
 
@@ -411,7 +414,7 @@ do
         local playername = UnitName("player")
         if fullName == playername .. "-" .. realm then return end
 
-        PersonalPlayerBlacklist:SavePlayerInfoValue("playerClass", localizedClass)
+        PersonalPlayerBlacklist:SavePlayerInfoValue("playerClass", class)
         if not isOnList then
             popupText = "|cffd80000Blacklist player|r"
         else
@@ -456,14 +459,14 @@ do
         if resultID then
             local searchResultInfo = C_LFGList.GetSearchResultInfo(resultID)
             local name, realm = PersonalPlayerBlacklist:FormatName(searchResultInfo.leaderName)
-            local _, localizedClass, isLeader
+            local _, class, isLeader
             for i = 1, searchResultInfo.numMembers do
-                _, _, localizedClass, _, isLeader = C_LFGList.GetSearchResultMemberInfo(resultID, i)
+                _, class, _, _, isLeader = C_LFGList.GetSearchResultMemberInfo(resultID, i)
                 if isLeader then
                     break
                 end
             end
-            return name, realm, localizedClass
+            return name, realm, class
         end
         local memberIdx = owner.memberIdx
         if not memberIdx then
@@ -480,7 +483,7 @@ do
         local fullName, class, localizedClass = C_LFGList.GetApplicantMemberInfo(applicantID, memberIdx)
         local name, realm = PersonalPlayerBlacklist:FormatName(fullName)
 
-        return name, realm, localizedClass
+        return name, realm, class
     end
 
     function module:Setup()
