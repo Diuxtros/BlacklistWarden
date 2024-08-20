@@ -1,4 +1,3 @@
-local _G = getfenv(0)
 local ADDON_NAME, addon = ...
 addon.addonName = "PersonalPlayerBlacklist"
 addon.addonTitle = "Personal Player Blacklist"
@@ -44,25 +43,51 @@ local options = {
             name = "General Options",
         },
         blacklistPopup = {
+            order = 1,
             type = 'toggle',
-            name = 'Detail popup',
+            name = 'Toggle blacklist popup',
             desc = 'Shows a popup when blacklisting a player that lets you add extra information, otherwise adds the player with default values.',
             set = "SetShowPopup",
             get = "GetShowPopup",
+            width="full"
         },
         lockWindows = {
+            order = 4,
             type = 'toggle',
-            name = 'Lock panels',
+            name = 'Lock windows',
             desc = 'Locks the addon\'s windows, preventing them from moving.',
             set = "SetLockWindows",
             get = "GetLockWindows",
+            width="full"
         },
         minimapIcon = {
+            order = 6,
             type = 'toggle',
-            name = 'Minimap icon',
+            name = 'Toggle minimap icon',
             desc = 'Toggles the minimap icon.',
             set = "SetShowIcon",
             get = "GetShowIcon",
+            width="full"
+        },
+        spacer1= {
+            order = 2,
+            type = "description",
+            name = "\n\n\n\n",
+        },
+        spacer2= {
+            order = 5,
+            type = "description",
+            name = "\n\n\n\n",
+        },
+        headerCredits = {
+            order = 9,
+            type = "header",
+            name = "Credits",
+        },
+        creditsDescription = {
+            order = 10,
+            type = "description",
+            name = "|cffF58CBADiuxtros|r @ Icecrown (US) - |cffFF8000Author|r",
         },
     },
 }
@@ -163,8 +188,11 @@ end
 
 function PersonalPlayerBlacklist:SlashCommand(msg)
     if not msg or msg:trim() == "" then
+        print("|cffFFFF00/ppb settings -|r Opens the settings window")
+        print("|cffFFFF00/ppb list -|r Opens the list window")
+    elseif string.lower(msg:trim()) =="settings" then
         Settings.OpenToCategory("PersonalPlayerBlacklist")
-    else
+    elseif string.lower(msg:trim()) =="list" then
         blacklistListWindow:Show()
     end
 end
