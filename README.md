@@ -18,7 +18,7 @@
 3. **Place in Addons Folder**: Move the extracted folder to your World of Warcraft addons directory. For example:
    - **Windows**: `C:\Program Files (x86)\World of Warcraft\_retail_\Interface\AddOns\`
    - **Mac**: `/Applications/World of Warcraft/_retail_/Interface/AddOns/`
-4. **Restart WoW**: Launch World of Warcraft and enable Blacklist Warden from the Addons menu at the character selection screen.
+4. **Enable the addon**: Launch World of Warcraft and enable Blacklist Warden from the Addons menu at the character selection screen.
 
 ## Usage
 
