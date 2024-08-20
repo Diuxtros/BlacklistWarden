@@ -1,12 +1,12 @@
 ## Interface: 110000
-## Title: Personal Player Blacklist
+## Title: Blacklist Warden
 ## Notes: Blacklist players and get notified when they are in your groups.
 ## Author: Diuxtros
 ## Version: 1.0
-## OptionalDeps: Ace3, LibDeformat-3.0, lib-st, LibDataBroker-1.1, LibDBIcon-1.0, LibAlts-1.0
+## OptionalDeps: Ace3, LibDeformat-3.0, lib-st, LibDataBroker-1.1, LibDBIcon-1.0
 ## X-Embeds: Ace3
 ## X-Category: Interface Enhancements
-## SavedVariables: PersonalPlayerBlacklistDB
+## SavedVariables: BlacklistWardenDB
 
 embeds.xml
 

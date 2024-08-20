@@ -1,4 +1,9 @@
+--File that handles the frames
+
+-- lib
 local AceGUI = LibStub("AceGUI-3.0")
+
+-- rgb class colors
 local classColor = {
     ["WARRIOR"] = { 0.78, 0.61, 0.43 },
     ["PALADIN"] = { 0.96, 0.55, 0.73 },
@@ -14,6 +19,8 @@ local classColor = {
     ["DEATHKNIGHT"] = { 0.77, 0.12, 0.23 },
     ["EVOKER"] = { 0.20, 0.58, 0.50 },
 }
+
+-- class names to display
 local className = {
     ["WARRIOR"] = "Warrior",
     ["PALADIN"] = "Paladin",
@@ -29,7 +36,9 @@ local className = {
     ["DEATHKNIGHT"] = "Death Knight",
     ["EVOKER"] = "Evoker",
 }
-function PersonalPlayerBlacklist:CreateStandardButton(text, width, parent)
+
+--Create default blizzard button
+function BlacklistWarden:CreateStandardButton(text, width, parent)
     local button = {}
     button = AceGUI:Create("Button")
     button:SetText(text)
@@ -39,13 +48,45 @@ function PersonalPlayerBlacklist:CreateStandardButton(text, width, parent)
     return button;
 end
 
-function PersonalPlayerBlacklist:CreateBlacklistWarningWindow()
-    local container = PersonalPlayerBlacklist:CreateMainFrame("BlacklistWarningWindow", 280, 130)
-    local frameConfig = PersonalPlayerBlacklist.db.profile.blacklistWarningFrame
-    PersonalPlayerBlacklist:HandleFrameConfig(container, frameConfig)
+-- Create base frame for all widgets
+function BlacklistWarden:CreateMainFrame(name, width, height)
+    local container = CreateFrame("Frame", name, UIParent,
+        BackdropTemplateMixin and "BackdropTemplate")
+    container:SetFrameStrata("DIALOG")
+    container:SetToplevel(true)
+    container:SetWidth(width)
+    container:SetHeight(height)
+    container:SetScale(1 / UIParent:GetScale())
+    container:SetBackdrop(
+        {
+            bgFile = "Interface\\ChatFrame\\ChatFrameBackground",
+            edgeFile = "Interface\\DialogFrame\\UI-DialogBox-Border",
+            tile = true,
+            tileSize = 32,
+            edgeSize = 15,
+            insets = { left = 2, right = 2, top = 2, bottom = 2 }
+        })
+    container:SetBackdropColor(0, 0, 0, 0.7)
+    container:SetMovable(true)
+    container:RegisterForDrag("LeftButton")
+    container:SetScript("OnDragStart",
+        function(this, button)
+            if container:IsMovable() then
+                this:StartMoving()
+            end
+        end)
+    container:EnableMouse(true)
+    return container
+end
+
+--Create warning window that shows when joining a group with a blacklisted player
+function BlacklistWarden:CreateBlacklistWarningWindow()
+    local container = BlacklistWarden:CreateMainFrame("BlacklistWarningWindow", 280, 130)
+    local frameConfig = BlacklistWarden.db.profile.blacklistWarningFrame
+    BlacklistWarden:HandleFrameConfig(container, frameConfig)
 
 
-    local savebutton = PersonalPlayerBlacklist:CreateStandardButton("Leave", 100, container)
+    local savebutton = BlacklistWarden:CreateStandardButton("Leave", 100, container)
     savebutton:SetCallback("OnClick", function(this)
         C_PartyInfo.LeaveParty()
         this.frame:GetParent():Hide()
@@ -55,7 +96,7 @@ function PersonalPlayerBlacklist:CreateBlacklistWarningWindow()
     local colorR, colorG, colorB, colorA = savebutton.frame:GetNormalFontObject():GetTextColor()
 
 
-    local cancelbutton = PersonalPlayerBlacklist:CreateStandardButton("Stay", 100, container)
+    local cancelbutton = BlacklistWarden:CreateStandardButton("Stay", 100, container)
     cancelbutton:SetCallback("OnClick", function(this) this.frame:GetParent():Hide(); end)
     cancelbutton.frame:SetPoint("BOTTOM", container, "BOTTOM", 60, 10)
 
@@ -101,7 +142,9 @@ function PersonalPlayerBlacklist:CreateBlacklistWarningWindow()
     end
     local function SetPlayerData(player)
         local class = string.upper(player["class"]:gsub("%s+", ""))
-        name:SetText("Name: |cff"..RGBToHex(classColor[class][1]*255, classColor[class][2]*255, classColor[class][3]*255)..player["name"] .. "-" .. player["server"])
+        name:SetText("Name: |cff" ..
+        RGBToHex(classColor[class][1] * 255, classColor[class][2] * 255, classColor[class][3] * 255) ..
+        player["name"] .. "-" .. player["server"])
 
 
         --name:SetTextColor(classColor[class][1], classColor[class][2], classColor[class][3], 1);
@@ -113,38 +156,8 @@ function PersonalPlayerBlacklist:CreateBlacklistWarningWindow()
     return container;
 end
 
-function PersonalPlayerBlacklist:CreateMainFrame(name, width, height)
-    local container = CreateFrame("Frame", name, UIParent,
-        BackdropTemplateMixin and "BackdropTemplate")
-    container:SetFrameStrata("DIALOG")
-    container:SetToplevel(true)
-    container:SetWidth(width)
-    container:SetHeight(height)
-    container:SetScale(1 / UIParent:GetScale())
-    container:SetBackdrop(
-        {
-            bgFile = "Interface\\ChatFrame\\ChatFrameBackground",
-            edgeFile = "Interface\\DialogFrame\\UI-DialogBox-Border",
-            tile = true,
-            tileSize = 32,
-            edgeSize = 15,
-            insets = { left = 2, right = 2, top = 2, bottom = 2 }
-        })
-    container:SetBackdropColor(0, 0, 0, 0.7)
-    container:SetMovable(true)
-    container:RegisterForDrag("LeftButton")
-    container:SetScript("OnDragStart",
-        function(this, button)
-            if container:IsMovable() then
-                this:StartMoving()
-             end
-
-        end)
-    container:EnableMouse(true)
-    return container
-end
-
-function PersonalPlayerBlacklist:HandleFrameConfig(container, frameConfig)
+-- Handles getting and setting window positions
+function BlacklistWarden:HandleFrameConfig(container, frameConfig)
     container:SetPoint(frameConfig.point,
         frameConfig.relativeFrame,
         frameConfig.relativePoint,
@@ -163,24 +176,25 @@ function PersonalPlayerBlacklist:HandleFrameConfig(container, frameConfig)
         end)
 end
 
-function PersonalPlayerBlacklist:CreateBlacklistPopupWindow()
-    local container = PersonalPlayerBlacklist:CreateMainFrame("BlacklistPopupWindow", 250, 200)
-    local frameConfig = PersonalPlayerBlacklist.db.profile.blacklistPopupFrame
-    PersonalPlayerBlacklist:HandleFrameConfig(container, frameConfig)
+--Creates extra window to add/edit a player
+function BlacklistWarden:CreateBlacklistPopupWindow()
+    local container = BlacklistWarden:CreateMainFrame("BlacklistPopupWindow", 250, 200)
+    local frameConfig = BlacklistWarden.db.profile.blacklistPopupFrame
+    BlacklistWarden:HandleFrameConfig(container, frameConfig)
 
 
-    local savebutton = PersonalPlayerBlacklist:CreateStandardButton("Save", 100, container)
+    local savebutton = BlacklistWarden:CreateStandardButton("Save", 100, container)
     savebutton.frame:SetPoint("BOTTOM", container, "BOTTOM", -60, 15)
     savebutton:SetCallback("OnClick",
         function(this)
-            PersonalPlayerBlacklist:SavePlayerInfoValue("notes", container.editbox:GetText())
-            PersonalPlayerBlacklist:WritePlayerToDisk()
+            BlacklistWarden:SavePlayerInfoValue("notes", container.editbox:GetText())
+            BlacklistWarden:WritePlayerToDisk()
             this.frame:GetParent():Hide()
         end)
 
     local colorR, colorG, colorB, colorA = savebutton.frame:GetNormalFontObject():GetTextColor()
 
-    local cancelbutton = PersonalPlayerBlacklist:CreateStandardButton("Cancel", 100, container)
+    local cancelbutton = BlacklistWarden:CreateStandardButton("Cancel", 100, container)
     cancelbutton.frame:SetPoint("BOTTOM", container, "BOTTOM", 60, 15)
     cancelbutton:SetCallback("OnClick", function(this) this.frame:GetParent():Hide(); end)
 
@@ -220,13 +234,13 @@ function PersonalPlayerBlacklist:CreateBlacklistPopupWindow()
 
     local drop = {}
     drop = AceGUI:Create("Dropdown")
-    drop:SetList(PersonalPlayerBlacklist.db.global.blacklistPopupWindowOptions)
+    drop:SetList(BlacklistWarden.db.global.blacklistPopupWindowOptions)
     drop:SetWidth(208)
     drop:SetValue(1)
     drop:SetLabel("Reason:")
     drop:SetCallback("OnValueChanged", function(this, event, item)
-        PersonalPlayerBlacklist:SavePlayerInfoValue("reason",
-            PersonalPlayerBlacklist.db.global.blacklistPopupWindowOptions[item])
+        BlacklistWarden:SavePlayerInfoValue("reason",
+            BlacklistWarden.db.global.blacklistPopupWindowOptions[item])
     end
     )
     drop.frame:SetParent(container)
@@ -267,25 +281,27 @@ function PersonalPlayerBlacklist:CreateBlacklistPopupWindow()
     return container;
 end
 
-local UnfilteredScrollButtons = {}
+-- Sorting data
 local FilteredScrollButtons   = {}
 local columnCount             = 0
 local lastSort                = false;
 local lastSortID              = 1;
-function PersonalPlayerBlacklist:CreateListFrame()
-    local container = PersonalPlayerBlacklist:CreateMainFrame("ListWindow", 800, 500)
-    local frameConfig = PersonalPlayerBlacklist.db.profile.listFrame
-    PersonalPlayerBlacklist:HandleFrameConfig(container, frameConfig)
+
+-- Creates window to list all the blacklisted players
+function BlacklistWarden:CreateListFrame()
+    local container = BlacklistWarden:CreateMainFrame("ListWindow", 800, 500)
+    local frameConfig = BlacklistWarden.db.profile.listFrame
+    BlacklistWarden:HandleFrameConfig(container, frameConfig)
     columnCount   = 0
     local heading = {}
     heading       = AceGUI:Create("Heading")
-    heading:SetText("Global Player Blacklist")
+    heading:SetText("Blacklist Warden - All players")
     heading:SetWidth(container:GetWidth() - 5)
     heading.frame:SetParent(container)
     heading.frame:SetPoint("TOP", container, "TOP", 0, -20)
     heading.frame:Show()
 
-    local closebutton = PersonalPlayerBlacklist:CreateStandardButton("Close", 80, container)
+    local closebutton = BlacklistWarden:CreateStandardButton("Close", 80, container)
     closebutton.frame:SetPoint("BOTTOMRIGHT", container, "BOTTOMRIGHT", -10, 10)
     closebutton:SetHeight(20)
     closebutton:SetCallback("OnClick",
@@ -318,27 +334,27 @@ function PersonalPlayerBlacklist:CreateListFrame()
     scrollChild:SetWidth(scrollFrame:GetWidth())
     scrollChild:SetHeight(1)
 
-    PersonalPlayerBlacklist:CreateColumnHeader("Name", scrollFrame, 110, "scroll", scrollChild)
-    PersonalPlayerBlacklist:CreateColumnHeader("Realm", scrollFrame, 105, "scroll", scrollChild)
-    PersonalPlayerBlacklist:CreateColumnHeader("Class", scrollFrame, 110, "scroll", scrollChild)
-    PersonalPlayerBlacklist:CreateColumnHeader("Reason", scrollFrame, 80, "scroll", scrollChild)
-    PersonalPlayerBlacklist:CreateColumnHeader("Date Added", scrollFrame, 90, "scroll", scrollChild)
-    PersonalPlayerBlacklist:CreateColumnHeader("Notes", scrollFrame, 260, "scroll", scrollChild)
+    BlacklistWarden:CreateColumnHeader("Name", scrollFrame, 110, "scroll", scrollChild)
+    BlacklistWarden:CreateColumnHeader("Realm", scrollFrame, 105, "scroll", scrollChild)
+    BlacklistWarden:CreateColumnHeader("Class", scrollFrame, 110, "scroll", scrollChild)
+    BlacklistWarden:CreateColumnHeader("Reason", scrollFrame, 80, "scroll", scrollChild)
+    BlacklistWarden:CreateColumnHeader("Date Added", scrollFrame, 90, "scroll", scrollChild)
+    BlacklistWarden:CreateColumnHeader("Notes", scrollFrame, 260, "scroll", scrollChild)
 
-    --PersonalPlayerBlacklist:CreateTableButton(scrollcontainer.frame,1);
+    --BlacklistWarden:CreateTableButton(scrollcontainer.frame,1);
 
     FilteredScrollButtons = {}
     local index = 1
-    for key, value in pairs(PersonalPlayerBlacklist.db.global.blacklistedPlayers) do
-        PersonalPlayerBlacklist:CreateTableButton(scrollChild, index, value);
+    for key, value in pairs(BlacklistWarden.db.global.blacklistedPlayers) do
+        BlacklistWarden:CreateTableButton(scrollChild, index, value);
         index = index + 1
     end
 
     container:Hide()
     local function AddEntry(player)
-        PersonalPlayerBlacklist:CreateTableButton(scrollChild, index, player);
+        BlacklistWarden:CreateTableButton(scrollChild, index, player);
         lastSort = not lastSort
-        PersonalPlayerBlacklist:SortPlayerBlacklist(lastSortID, scrollChild)
+        BlacklistWarden:SortPlayerBlacklist(lastSortID, scrollChild)
         index = index + 1
     end
     local function RemoveEntry(player)
@@ -347,7 +363,7 @@ function PersonalPlayerBlacklist:CreateListFrame()
                 FilteredScrollButtons[i]:Hide()
                 table.remove(FilteredScrollButtons, i)
                 lastSort = not lastSort
-                PersonalPlayerBlacklist:SortPlayerBlacklist(lastSortID, scrollChild)
+                BlacklistWarden:SortPlayerBlacklist(lastSortID, scrollChild)
                 index = index - 1
                 break
             end
@@ -369,12 +385,13 @@ function PersonalPlayerBlacklist:CreateListFrame()
         function(self)
             lastSort = true
             lastSortID = 5
-            PersonalPlayerBlacklist:SortPlayerBlacklist(5, scrollChild)
+            BlacklistWarden:SortPlayerBlacklist(5, scrollChild)
         end)
     return container;
 end
 
-function PersonalPlayerBlacklist:CreateColumnHeader(text, parent, width, name, child)
+-- Creates columns for player list
+function BlacklistWarden:CreateColumnHeader(text, parent, width, name, child)
     local p = _G[name .. "Header1"]
 
     if p == nil then
@@ -396,12 +413,13 @@ function PersonalPlayerBlacklist:CreateColumnHeader(text, parent, width, name, c
         Header:SetPoint("LEFT", name .. "Header" .. columnCount - 1, "RIGHT", 0, 0)
     end
     local function SortPlayerBlacklist(self)
-        PersonalPlayerBlacklist:SortPlayerBlacklist(self:GetID(), child)
+        BlacklistWarden:SortPlayerBlacklist(self:GetID(), child)
     end
     Header:SetScript("OnClick", SortPlayerBlacklist)
 end
 
-function PersonalPlayerBlacklist:SortPlayerBlacklist(sortBy, parent)
+--Sorting function
+function BlacklistWarden:SortPlayerBlacklist(sortBy, parent)
     if lastSortID ~= sortBy then
         lastSort = false
     end
@@ -433,7 +451,7 @@ function PersonalPlayerBlacklist:SortPlayerBlacklist(sortBy, parent)
                 end
             elseif sortBy == 5 then
                 local firstHalfa, secondHalfa = strsplit(" ",
-                    PersonalPlayerBlacklist.db.global.blacklistedPlayers[a.name:GetText() .. "-" .. a.server:GetText()]
+                    BlacklistWarden.db.global.blacklistedPlayers[a.name:GetText() .. "-" .. a.server:GetText()]
                     ["date"])
                 local amonth, aday, ayear = strsplit("/", firstHalfa)
                 local ahour, amin, asec = strsplit(":", secondHalfa)
@@ -446,7 +464,7 @@ function PersonalPlayerBlacklist:SortPlayerBlacklist(sortBy, parent)
                     sec = asec
                 }
                 local firstHalfb, secondHalfb = strsplit(" ",
-                    PersonalPlayerBlacklist.db.global.blacklistedPlayers[b.name:GetText() .. "-" .. b.server:GetText()]
+                    BlacklistWarden.db.global.blacklistedPlayers[b.name:GetText() .. "-" .. b.server:GetText()]
                     ["date"])
                 local bmonth, bday, byear = strsplit("/", firstHalfb)
                 local bhour, bmin, bsec = strsplit(":", secondHalfb)
@@ -487,7 +505,8 @@ function PersonalPlayerBlacklist:SortPlayerBlacklist(sortBy, parent)
     end
 end
 
-function PersonalPlayerBlacklist:CreateTableButton(parent, index, player)
+--Creates table entries
+function BlacklistWarden:CreateTableButton(parent, index, player)
     FilteredScrollButtons[index] = CreateFrame("Button", nil, parent, "IgnoreListButtonTemplate")
     if index == 1 then
         FilteredScrollButtons[index]:SetPoint("TOPLEFT", parent, -1, 0)
@@ -499,7 +518,7 @@ function PersonalPlayerBlacklist:CreateTableButton(parent, index, player)
     FilteredScrollButtons[index]:RegisterForClicks("RightButtonDown")
 
     local function createDropdown(self)
-        PersonalPlayerBlacklist:CreateDropdown(self)
+        BlacklistWarden:CreateDropdown(self)
     end
 
     FilteredScrollButtons[index]:SetScript("OnClick", createDropdown)
@@ -564,11 +583,12 @@ function PersonalPlayerBlacklist:CreateTableButton(parent, index, player)
     -- create filter style
 end
 
-function PersonalPlayerBlacklist:CreateDropdown(self)
+--Creates context menu for player list
+function BlacklistWarden:CreateDropdown(self)
     local playerName = self.name:GetText() .. "-" .. self.server:GetText()
     MenuUtil.CreateContextMenu(UIParent, function(ownerRegion, rootDescription)
         rootDescription:CreateTitle("Select option")
-        rootDescription:CreateButton("Edit", function() PersonalPlayerBlacklist:EditEntry(playerName) end)
-        rootDescription:CreateButton("Remove", function() PersonalPlayerBlacklist:RemovePlayer(playerName) end)
+        rootDescription:CreateButton("Edit", function() BlacklistWarden:EditEntry(playerName) end)
+        rootDescription:CreateButton("Remove", function() BlacklistWarden:RemovePlayer(playerName) end)
     end)
 end
