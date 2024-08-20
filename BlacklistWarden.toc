@@ -1,4 +1,4 @@
-## Interface: 110000
+## Interface: 110002
 ## Title: Blacklist Warden
 ## Notes: Blacklist players and get notified when they are in your groups.
 ## Author: Diuxtros
@@ -7,7 +7,7 @@
 ## X-Embeds: Ace3
 ## X-Category: Interface Enhancements
 ## SavedVariables: BlacklistWardenDB
-
+## IconTexture: Interface\Icons\Spell_Mage_Evanesce
 embeds.xml
 
 
