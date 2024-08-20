@@ -37,4 +37,4 @@
 
 ## Contact
 
-For any questions, suggestions or issues, please open an issue on the [GitHub Issues page](https://github.com/yourusername/BlacklistWarden/issues) or contact us via [email](mailto:your-email@example.com).
+For any questions, suggestions or issues, please open an issue on the [GitHub Issues page](https://github.com/Diuxtros/BlacklistWarden/issues)
