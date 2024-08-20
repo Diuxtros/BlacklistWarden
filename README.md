@@ -29,8 +29,12 @@
 
 ## Screenshots
 
-![Screenshot 1](https://github.com/yourusername/BlacklistWarden/screenshots/screenshot1.png)
-![Screenshot 2](https://github.com/yourusername/BlacklistWarden/screenshots/screenshot2.png)
+![image](https://github.com/user-attachments/assets/2b0107de-d4fa-4413-a229-62aedaac3070)
+
+![image](https://github.com/user-attachments/assets/a33ef288-2d64-4dcf-be99-68f504c04cef)
+
+![image](https://github.com/user-attachments/assets/95bd54b9-db1a-4589-8678-a17f7c884966)
+
 
 ## To-Do
 
