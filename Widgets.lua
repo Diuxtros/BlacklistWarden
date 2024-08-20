@@ -143,8 +143,8 @@ function BlacklistWarden:CreateBlacklistWarningWindow()
     local function SetPlayerData(player)
         local class = string.upper(player["class"]:gsub("%s+", ""))
         name:SetText("Name: |cff" ..
-        RGBToHex(classColor[class][1] * 255, classColor[class][2] * 255, classColor[class][3] * 255) ..
-        player["name"] .. "-" .. player["server"])
+            RGBToHex(classColor[class][1] * 255, classColor[class][2] * 255, classColor[class][3] * 255) ..
+            player["name"] .. "-" .. player["server"])
 
 
         --name:SetTextColor(classColor[class][1], classColor[class][2], classColor[class][3], 1);
@@ -282,10 +282,10 @@ function BlacklistWarden:CreateBlacklistPopupWindow()
 end
 
 -- Sorting data
-local FilteredScrollButtons   = {}
-local columnCount             = 0
-local lastSort                = false;
-local lastSortID              = 1;
+local FilteredScrollButtons = {}
+local columnCount           = 0
+local lastSort              = false;
+local lastSortID            = 1;
 
 -- Creates window to list all the blacklisted players
 function BlacklistWarden:CreateListFrame()
@@ -339,7 +339,7 @@ function BlacklistWarden:CreateListFrame()
     BlacklistWarden:CreateColumnHeader("Class", scrollFrame, 110, "scroll", scrollChild)
     BlacklistWarden:CreateColumnHeader("Reason", scrollFrame, 80, "scroll", scrollChild)
     BlacklistWarden:CreateColumnHeader("Date Added", scrollFrame, 90, "scroll", scrollChild)
-    BlacklistWarden:CreateColumnHeader("Notes", scrollFrame, 260, "scroll", scrollChild)
+    BlacklistWarden:CreateColumnHeader("Notes", scrollFrame, 265, "scroll", scrollChild)
 
     --BlacklistWarden:CreateTableButton(scrollcontainer.frame,1);
 
@@ -408,7 +408,7 @@ function BlacklistWarden:CreateColumnHeader(text, parent, width, name, child)
     Header:SetID(columnCount)
 
     if columnCount == 1 then
-        Header:SetPoint("TOPLEFT", parent, "TOPLEFT", 3, 27)
+        Header:SetPoint("TOPLEFT", parent, "TOPLEFT", 1, 27)
     else
         Header:SetPoint("LEFT", name .. "Header" .. columnCount - 1, "RIGHT", 0, 0)
     end
@@ -486,12 +486,16 @@ function BlacklistWarden:SortPlayerBlacklist(sortBy, parent)
                 end
             elseif sortBy == 6 then
                 if not lastSort then
-                    return a.notes:GetText() < b.notes:GetText()
+                    return string.lower(a.notes:GetText()) < string.lower(b.notes:GetText())
                 else
-                    return b.notes:GetText() < a.notes:GetText()
+                    return string.lower(b.notes:GetText()) < string.lower(a.notes:GetText())
                 end
             else
-                return tostring(a["date"]) < tostring(b["date"])
+                if not lastSort then
+                    return a.name:GetText() < b.name:GetText()
+                else
+                    return b.name:GetText() < a.name:GetText()
+                end
             end
         end)
     lastSort = not lastSort
