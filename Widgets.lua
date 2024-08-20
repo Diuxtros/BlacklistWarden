@@ -126,14 +126,14 @@ function BlacklistWarden:CreateBlacklistWarningWindow()
     name:SetPoint("TOPLEFT", container, "TOPLEFT", 10, -20)
 
     local reason = container:CreateFontString(nil, "OVERLAY", "GameFontNormal")
-    reason:SetPoint("TOPLEFT", name, "BOTTOMLEFT", 0, -5)
+    reason:SetPoint("TOPLEFT", name, "BOTTOMLEFT", 0, -10)
 
     local notes = container:CreateFontString(nil, "OVERLAY", "GameFontNormal")
-    notes:SetPoint("TOPLEFT", reason, "BOTTOMLEFT", 0, -5)
+    notes:SetPoint("TOPLEFT", reason, "BOTTOMLEFT", 0, -10)
     notes:SetWidth(250)
     notes:SetJustifyH("LEFT")
     notes:SetWordWrap(true)
-    notes:SetMaxLines(3)
+    notes:SetMaxLines(2)
     local function RGBToHex(r, g, b)
         r = r <= 255 and r >= 0 and r or 0
         g = g <= 255 and g >= 0 and g or 0
