@@ -14,6 +14,7 @@
 ## Installation
 
 1. **Download**: Get the latest release from CurseForge at:
+
 **OR**
 1. **Download**: Get the latest release from the [Releases page](https://github.com/yourusername/BlacklistWarden/releases).
 2. **Extract**: Unzip the downloaded file.
