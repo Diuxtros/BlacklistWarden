@@ -32,6 +32,11 @@
 ![Screenshot 1](https://github.com/yourusername/BlacklistWarden/screenshots/screenshot1.png)
 ![Screenshot 2](https://github.com/yourusername/BlacklistWarden/screenshots/screenshot2.png)
 
+## TO-DO
+
+- Localization
+- Search feature
+
 ## Contact
 
 For any questions, suggestions or issues, please open an issue on the [GitHub Issues page](https://github.com/Diuxtros/BlacklistWarden/issues)
