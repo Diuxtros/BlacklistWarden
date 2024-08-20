@@ -514,7 +514,7 @@ do
         local fullName = playerInfo["playerName"] .. "-" .. playerInfo["playerServer"]
         local isOnList = BlacklistWarden:IsPlayerInList(fullName);
         local playername = UnitName("player")
-        if fullName == playername .. "-" .. realm then return end
+        if fullName == playername .. "-" .. GetRealmName() then return end
 
         BlacklistWarden:SavePlayerInfoValue("playerClass", class)
         if not isOnList then
