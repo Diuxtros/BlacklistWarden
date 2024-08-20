@@ -36,6 +36,7 @@
 
 ![image](https://github.com/user-attachments/assets/95bd54b9-db1a-4589-8678-a17f7c884966)
 
+*Pics taken with ElvUI
 
 ## To-Do
 
