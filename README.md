@@ -13,10 +13,7 @@
     
 ## Installation
 
-1. **Download**: Get the latest release from CurseForge at:
-
-    **OR**
-1. **Download**: Get the latest release from the [Releases page](https://github.com/yourusername/BlacklistWarden/releases).
+1. **Download**: Get the latest release from CurseForge or the [Releases page](https://github.com/Diuxtros/BlacklistWarden/releases).
 2. **Extract**: Unzip the downloaded file.
 3. **Place in Addons Folder**: Move the extracted folder to your World of Warcraft addons directory. For example:
    - **Windows**: `C:\Program Files (x86)\World of Warcraft\_retail_\Interface\AddOns\`
