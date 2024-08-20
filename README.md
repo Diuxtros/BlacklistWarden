@@ -27,8 +27,8 @@
 
 1. **Open the Addon**: Click the icon on your minimap to open the settings page or the blacklist window. Alternatively, type `/blw or /blacklistwarden` in the chat to see a list of commands. 
 2. **Add Entries**: Right click a player and select 'Blacklist Player' to add them to your blacklist.
-3. **Manage List**: Use the interface to view, search, and remove entries from your blacklist.
-4. **Settings**: Configure notifications and other preferences in the settings tab.
+3. **Manage List**: Use the interface to view, sort, edit, and remove entries from your blacklist.
+4. **Settings**: Configure preferences in the settings tab.
 
 ## Screenshots
 
