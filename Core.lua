@@ -147,7 +147,7 @@ local icon = LibStub("LibDBIcon-1.0")
 
 -- Register slash commands, init libraries
 function BlacklistWarden:OnInitialize()
-    self:RegisterChatCommand("BlacklistWarden", "SlashCommand")
+    self:RegisterChatCommand("blacklistwarden", "SlashCommand")
     self:RegisterChatCommand("BLW", "SlashCommand")
     self:RegisterChatCommand("blw", "SlashCommand")
     self.db = LibStub("AceDB-3.0"):New("BlacklistWardenDB", defaults)
