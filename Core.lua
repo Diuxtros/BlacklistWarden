@@ -4,11 +4,27 @@ addon.addonName = "PersonalPlayerBlacklist"
 addon.addonTitle = "Personal Player Blacklist"
 PersonalPlayerBlacklist = LibStub("AceAddon-3.0"):NewAddon(addon.addonName, "AceConsole-3.0", "AceHook-3.0",
     "AceEvent-3.0", "AceTimer-3.0")
+local blacklistPopupWindow = nil;
+local blacklistPopupWarning = nil;
+local blacklistListWindow = nil;
 local LDB = LibStub("LibDataBroker-1.1"):NewDataObject("PersonalPlayerBlacklist", {
     type = "data source",
     text = "PPB",
-    icon = "Interface\\Icons\\INV_Chest_Cloth_17",
-    OnClick = function() Settings.OpenToCategory("PersonalPlayerBlacklist") end,
+    icon = "Interface\\Icons\\Spell_Mage_Evanesce",
+    OnTooltipShow = function(tooltip)
+        tooltip:SetText("Global Player Blacklist")
+        tooltip:AddLine(" ")
+        tooltip:AddLine("Left click: |cffFFFFFFOpen player list")
+        tooltip:AddLine("Right click: |cffFFFFFFOpen settings")
+        tooltip:Show()
+    end,
+    OnClick = function(frame, button)
+        if button == "RightButton" then
+            Settings.OpenToCategory("PersonalPlayerBlacklist")
+        elseif button == "LeftButton" then
+            blacklistListWindow:Show()
+        end
+    end,
 })
 local icon = LibStub("LibDBIcon-1.0")
 PersonalPlayerBlacklist:RegisterChatCommand("rl", "Reload")
@@ -30,9 +46,16 @@ local options = {
         blacklistPopup = {
             type = 'toggle',
             name = 'Detail popup',
-            desc = 'Shows a popup when blacklisting a player that allows you to write extra details.',
+            desc = 'Shows a popup when blacklisting a player that lets you add extra information, otherwise adds the player with default values.',
             set = "SetShowPopup",
             get = "GetShowPopup",
+        },
+        lockWindows = {
+            type = 'toggle',
+            name = 'Lock panels',
+            desc = 'Locks the addon\'s windows, preventing them from moving.',
+            set = "SetLockWindows",
+            get = "GetLockWindows",
         },
         minimapIcon = {
             type = 'toggle',
@@ -64,6 +87,7 @@ local defaults = {
         minimap = {
             hide = false,
         },
+        lockWindows = true,
         blacklistPopupFrame = {
             point = "TOP",
             relativeFrame = nil,
@@ -93,9 +117,7 @@ LibStub("AceConfig-3.0"):RegisterOptionsTable(addon.addonName, options, { "PPB",
 
 local aceDialog = LibStub("AceConfigDialog-3.0");
 
-local blacklistPopupWindow = nil;
-local blacklistPopupWarning = nil;
-local blacklistListWindow = nil;
+
 local playerInfo = {}
 function PersonalPlayerBlacklist:OnInitialize()
     self:RegisterChatCommand("personalplayerblacklist", "SlashCommand")
@@ -110,7 +132,10 @@ end
 function PersonalPlayerBlacklist:OnEnable()
     blacklistPopupWindow = PersonalPlayerBlacklist:CreateBlacklistPopupWindow();
     blacklistPopupWarning = PersonalPlayerBlacklist:CreateBlacklistWarningWindow();
-    blacklistListWindow=PersonalPlayerBlacklist:CreateListFrame();
+    blacklistListWindow = PersonalPlayerBlacklist:CreateListFrame();
+    blacklistPopupWindow:SetMovable(not PersonalPlayerBlacklist.db.profile.lockWindows)
+    blacklistPopupWarning:SetMovable(not PersonalPlayerBlacklist.db.profile.lockWindows)
+    blacklistListWindow:SetMovable(not PersonalPlayerBlacklist.db.profile.lockWindows)
 end
 
 function PersonalPlayerBlacklist:CheckPlayersOnGroupUpdate()
@@ -127,9 +152,7 @@ function PersonalPlayerBlacklist:CheckPlayersOnGroupUpdate()
             if name and realm then
                 local fullname = name .. "-" .. realm;
                 if PersonalPlayerBlacklist:IsPlayerInList(fullname) then
-                    blacklistPopupWarning.title:SetText("The following player is in your blacklist:\n\n |cffd80000" ..
-                        fullname ..
-                        "|r\n\nReason: " .. PersonalPlayerBlacklist.db.global.blacklistedPlayers[fullname]["reason"])
+                    blacklistPopupWarning.setPlayerData(PersonalPlayerBlacklist.db.global.blacklistedPlayers[fullname])
                     blacklistPopupWarning:Show()
                 end
             end
@@ -186,6 +209,17 @@ function PersonalPlayerBlacklist:SetShowPopup(info, value)
     PersonalPlayerBlacklist.db.profile.showPopup = value;
 end
 
+function PersonalPlayerBlacklist:GetLockWindows(info)
+    return PersonalPlayerBlacklist.db.profile.lockWindows;
+end
+
+function PersonalPlayerBlacklist:SetLockWindows(info, value)
+    PersonalPlayerBlacklist.db.profile.lockWindows = value;
+    blacklistPopupWindow:SetMovable(not value)
+    blacklistPopupWarning:SetMovable(not value)
+    blacklistListWindow:SetMovable(not value)
+end
+
 function PersonalPlayerBlacklist:GetShowIcon(info)
     return not PersonalPlayerBlacklist.db.profile.minimap.hide;
 end
@@ -219,22 +253,40 @@ function PersonalPlayerBlacklist:FormatName(fullname)
 end
 
 function PersonalPlayerBlacklist:WritePlayerToDisk()
-    PersonalPlayerBlacklist.db.global.blacklistedPlayers[playerInfo["playerName"] .. "-" .. playerInfo["playerServer"]] = {
+    local date = date("%m/%d/%Y %H:%M:%S")
+    local playerName = playerInfo["playerName"] .. "-" .. playerInfo["playerServer"]
+    local player = PersonalPlayerBlacklist.db.global.blacklistedPlayers[playerName]
+    if player ~= nil then
+        date = player["date"]
+    end
+    PersonalPlayerBlacklist.db.global.blacklistedPlayers[playerName] = {
         ["name"] = playerInfo["playerName"],
         ["server"] = playerInfo["playerServer"],
         ["class"] = playerInfo["playerClass"],
         ["reason"] = playerInfo["reason"],
         ["notes"] = playerInfo["notes"],
-        ["date"] = date("%m/%d/%Y"),
+        ["date"] = date,
     }
-    print("|cffFF0000" .. playerInfo["playerName"] .. "-" .. playerInfo["playerServer"] .. "|r added to blacklist.")
-    blacklistListWindow.addEntry(PersonalPlayerBlacklist.db.global.blacklistedPlayers[playerInfo["playerName"] .. "-" .. playerInfo["playerServer"]])
+    if not player then
+        print("|cffFF0000" .. playerName .. "|r added to blacklist.")
+        blacklistListWindow.addEntry(PersonalPlayerBlacklist.db.global.blacklistedPlayers[playerName])
+    else
+        print("|cffFF0000" .. playerName .. "|r successfully modified.")
+        blacklistListWindow.updateEntry(PersonalPlayerBlacklist.db.global.blacklistedPlayers[playerName])
+    end
+
     playerInfo = {}
 end
 
 function PersonalPlayerBlacklist:BlacklistButton()
     if PersonalPlayerBlacklist.db.profile.showPopup then
-        blacklistPopupWindow.playerName:SetText(playerInfo["playerName"] .. "-" .. playerInfo["playerServer"])
+        blacklistPopupWindow.title:SetText("Add to blacklist")
+        blacklistPopupWindow.setPlayerName({
+            ["name"] = playerInfo["playerName"],
+            ["server"] = playerInfo
+                ["playerServer"],
+            ["class"] = playerInfo["playerClass"]
+        })
         blacklistPopupWindow.dropdown:SetValue(1)
         PersonalPlayerBlacklist:SavePlayerInfoValue("reason",
             PersonalPlayerBlacklist.db.global.blacklistPopupWindowOptions[1])
@@ -248,9 +300,32 @@ function PersonalPlayerBlacklist:BlacklistButton()
     end
 end
 
+function PersonalPlayerBlacklist:EditEntry(playername)
+    local player = PersonalPlayerBlacklist.db.global.blacklistedPlayers[playername]
+    playerInfo = {
+        ["playerName"] = player["name"],
+        ["playerServer"] = player["server"],
+        ["playerClass"] = player["class"],
+        ["reason"] = player["reason"]
+    }
+    blacklistPopupWindow.setPlayerName(player)
+    blacklistPopupWindow.title:SetText("Edit")
+    for i = 1, #PersonalPlayerBlacklist.db.global.blacklistPopupWindowOptions do
+        if PersonalPlayerBlacklist.db.global.blacklistPopupWindowOptions[i] == player["reason"] then
+            blacklistPopupWindow.dropdown:SetValue(i)
+            break;
+        end
+    end
+
+    blacklistPopupWindow.editbox:SetText(player["notes"])
+    blacklistPopupWindow:Show()
+end
+
 function PersonalPlayerBlacklist:RemovePlayer(name)
     if not PersonalPlayerBlacklist.db.global.blacklistedPlayers then PersonalPlayerBlacklist.db.global.blacklistedPlayers = {} end
+    blacklistListWindow.removeEntry(PersonalPlayerBlacklist.db.global.blacklistedPlayers[name])
     PersonalPlayerBlacklist.db.global.blacklistedPlayers[name] = nil;
+    print("|cFF00FF00" .. name .. "|r removed from blacklist.")
 end
 
 function PersonalPlayerBlacklist:IsPlayerInList(name)
@@ -262,14 +337,14 @@ function PersonalPlayerBlacklist:IsPlayerInList(name)
 end
 
 do
-    local function AddToTooltip(tooltip,player)
+    local function AddToTooltip(tooltip, player)
         tooltip:AddLine(" ")
-        tooltip:AddLine("BLACKLISTED", 1, 0, 0, false)
+        tooltip:AddLine("|cffFFC000Global Player Blacklist - |rBlacklisted", 1, 0, 0, false)
         tooltip:AddLine("|cffFFC000Reason: |r" .. player.reason .. "|r", 1, 1, 1, false)
         if player.notes and player.notes ~= "" then
             tooltip:AddLine("|cffFFC000Note: |r" .. player.notes, 1, 1, 1, true)
-            tooltip:AddLine(" ")
         end
+        tooltip:AddLine(" ")
     end
 
     local function OnTooltipSetUnit(tooltip, data)
@@ -283,7 +358,7 @@ do
             if not PersonalPlayerBlacklist:IsPlayerInList(fullname) then return end
             local player = PersonalPlayerBlacklist.db.global.blacklistedPlayers[fullname]
 
-            AddToTooltip(tooltip,player);
+            AddToTooltip(tooltip, player);
         end
     end
     local function SetSearchEntry(tooltip, resultID, autoAcceptOption)
@@ -296,7 +371,7 @@ do
             if not PersonalPlayerBlacklist:IsPlayerInList(fullname) then return end
             local player = PersonalPlayerBlacklist.db.global.blacklistedPlayers[fullname]
 
-            AddToTooltip(tooltip,player)
+            AddToTooltip(tooltip, player)
         end
     end
 
@@ -323,7 +398,7 @@ do
                 if not PersonalPlayerBlacklist:IsPlayerInList(fullName) then return end
                 local player = PersonalPlayerBlacklist.db.global.blacklistedPlayers[fullName]
                 --GameTooltip:SetPoint("TOPLEFT", self, "TOPRIGHT", 0, 0)
-                AddToTooltip(GameTooltip,player)
+                AddToTooltip(GameTooltip, player)
                 GameTooltip:Show()
             end
         end
@@ -428,7 +503,6 @@ do
                 PersonalPlayerBlacklist:BlacklistButton()
             else
                 PersonalPlayerBlacklist:RemovePlayer(fullName)
-                print("|cFF00FF00" .. fullName .. "|r removed from blacklist.")
             end
         end)
     end

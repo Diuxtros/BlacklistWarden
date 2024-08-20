@@ -1,19 +1,33 @@
 local AceGUI = LibStub("AceGUI-3.0")
-local classColor={
-    ["UNSPECIFIED"]={0.62,0.62,0.62},
-    ["WARRIOR"]={0.78,0.61,0.43},
-    ["PALADIN"]={0.96,0.55,0.73},
-    ["HUNTER"]={0.67,0.83,0.45},
-    ["ROGUE"]={1.00,0.96,0.41},
-    ["PRIEST"]={1,1,1},
-    ["SHAMAN"]={0.00,0.44,0.87},
-    ["MAGE"]={0.25,0.78,0.92},
-    ["WARLOCK"]={0.53,0.53,0.93},
-    ["MONK"]={0.00,1.00,0.59},
-    ["DRUID"]={1.00,0.49,0.04},
-    ["DEMONHUNTER"]={0.64,0.19,0.79},
-    ["DEATHKNIGHT"]={0.77,0.12,0.23},
-    ["EVOKER"]={0.20, 0.58, 0.50},
+local classColor = {
+    ["WARRIOR"] = { 0.78, 0.61, 0.43 },
+    ["PALADIN"] = { 0.96, 0.55, 0.73 },
+    ["HUNTER"] = { 0.67, 0.83, 0.45 },
+    ["ROGUE"] = { 1.00, 0.96, 0.41 },
+    ["PRIEST"] = { 1, 1, 1 },
+    ["SHAMAN"] = { 0.00, 0.44, 0.87 },
+    ["MAGE"] = { 0.25, 0.78, 0.92 },
+    ["WARLOCK"] = { 0.53, 0.53, 0.93 },
+    ["MONK"] = { 0.00, 1.00, 0.59 },
+    ["DRUID"] = { 1.00, 0.49, 0.04 },
+    ["DEMONHUNTER"] = { 0.64, 0.19, 0.79 },
+    ["DEATHKNIGHT"] = { 0.77, 0.12, 0.23 },
+    ["EVOKER"] = { 0.20, 0.58, 0.50 },
+}
+local className = {
+    ["WARRIOR"] = "Warrior",
+    ["PALADIN"] = "Paladin",
+    ["HUNTER"] = "Hunter",
+    ["ROGUE"] = "Rogue",
+    ["PRIEST"] = "Priest",
+    ["SHAMAN"] = "Shaman",
+    ["MAGE"] = "Mage",
+    ["WARLOCK"] = "Warlock",
+    ["MONK"] = "Monk",
+    ["DRUID"] = "Druid",
+    ["DEMONHUNTER"] = "Demon Hunter",
+    ["DEATHKNIGHT"] = "Death Knight",
+    ["EVOKER"] = "Evoker",
 }
 function PersonalPlayerBlacklist:CreateStandardButton(text, width, parent)
     local button = {}
@@ -36,23 +50,65 @@ function PersonalPlayerBlacklist:CreateBlacklistWarningWindow()
         C_PartyInfo.LeaveParty()
         this.frame:GetParent():Hide()
     end)
-    savebutton.frame:SetPoint("BOTTOM", container, "BOTTOM", -60, 20)
+    savebutton.frame:SetPoint("BOTTOM", container, "BOTTOM", -60, 10)
 
     local colorR, colorG, colorB, colorA = savebutton.frame:GetNormalFontObject():GetTextColor()
 
 
     local cancelbutton = PersonalPlayerBlacklist:CreateStandardButton("Stay", 100, container)
     cancelbutton:SetCallback("OnClick", function(this) this.frame:GetParent():Hide(); end)
-    cancelbutton.frame:SetPoint("BOTTOM", container, "BOTTOM", 60, 20)
+    cancelbutton.frame:SetPoint("BOTTOM", container, "BOTTOM", 60, 10)
 
 
+    local titleBg = CreateFrame("Frame", "titleBG", container,
+        BackdropTemplateMixin and "BackdropTemplate")
+    titleBg:SetWidth(150)
+    titleBg:SetHeight(30)
+    titleBg:SetBackdrop(
+        {
+            bgFile = "Interface\\ChatFrame\\ChatFrameBackground",
+            edgeFile = "Interface\\DialogFrame\\UI-DialogBox-Border",
+            tile = true,
+            tileSize = 32,
+            edgeSize = 15,
+            insets = { left = 2, right = 2, top = 2, bottom = 2 }
+        })
+    titleBg:SetBackdropColor(0, 0, 0, 1)
+    titleBg:SetPoint("TOP", container, "TOP", 0, 13)
 
-    local title = container:CreateFontString(nil, "OVERLAY", "GameFontNormal")
-    title:SetPoint("TOPLEFT", container, "TOPLEFT", 5, -10)
-    title:SetPoint("BOTTOMRIGHT", container, "BOTTOMRIGHT", -5, 50)
+    local title = titleBg:CreateFontString(nil, "OVERLAY", "GameFontNormal")
+    title:SetPoint("CENTER", titleBg, "CENTER", 0, 0)
     title:SetTextColor(colorR, colorG, colorB, colorA)
+    title:SetText("Blacklisted player")
+    --title:SetTextColor(1,0,0,1)
+    local name = container:CreateFontString(nil, "OVERLAY", "GameFontNormal")
+    name:SetPoint("TOPLEFT", container, "TOPLEFT", 10, -20)
 
-    container.title = title
+    local reason = container:CreateFontString(nil, "OVERLAY", "GameFontNormal")
+    reason:SetPoint("TOPLEFT", name, "BOTTOMLEFT", 0, -5)
+
+    local notes = container:CreateFontString(nil, "OVERLAY", "GameFontNormal")
+    notes:SetPoint("TOPLEFT", reason, "BOTTOMLEFT", 0, -5)
+    notes:SetWidth(250)
+    notes:SetJustifyH("LEFT")
+    notes:SetWordWrap(true)
+    notes:SetMaxLines(3)
+    local function RGBToHex(r, g, b)
+        r = r <= 255 and r >= 0 and r or 0
+        g = g <= 255 and g >= 0 and g or 0
+        b = b <= 255 and b >= 0 and b or 0
+        return string.format("%02x%02x%02x", r, g, b)
+    end
+    local function SetPlayerData(player)
+        local class = string.upper(player["class"]:gsub("%s+", ""))
+        name:SetText("Name: |cff"..RGBToHex(classColor[class][1]*255, classColor[class][2]*255, classColor[class][3]*255)..player["name"] .. "-" .. player["server"])
+
+
+        --name:SetTextColor(classColor[class][1], classColor[class][2], classColor[class][3], 1);
+        reason:SetText("Reason: |cffd80000" .. player["reason"])
+        notes:SetText("Notes: |cffFFFFFF" .. player["notes"])
+    end
+    container.setPlayerData = SetPlayerData
     container:Hide()
     return container;
 end
@@ -79,7 +135,10 @@ function PersonalPlayerBlacklist:CreateMainFrame(name, width, height)
     container:RegisterForDrag("LeftButton")
     container:SetScript("OnDragStart",
         function(this, button)
-            this:StartMoving()
+            if container:IsMovable() then
+                this:StartMoving()
+             end
+
         end)
     container:EnableMouse(true)
     return container
@@ -143,14 +202,21 @@ function PersonalPlayerBlacklist:CreateBlacklistPopupWindow()
 
     local title = titleBg:CreateFontString(nil, "OVERLAY", "GameFontNormal")
     title:SetPoint("CENTER", titleBg, "CENTER", 0, 0)
-    title:SetText("Add to Blacklist")
     title:SetTextColor(colorR, colorG, colorB, colorA)
 
-    local playerName = container:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
+    container.title = title
+    local playerName = container:CreateFontString(nil, "OVERLAY", "GameFontNormal")
     playerName:SetPoint("TOP", container, "TOP", 0, -20)
-    playerName:SetTextColor(216, 0, 0, 1)
+    playerName:SetWordWrap(true)
+    playerName:SetMaxLines(1)
 
-    container.playerName = playerName;
+    local function SetPlayerName(player)
+        playerName:SetText(player["name"] .. "-" .. player["server"])
+        local class = string.upper(player["class"]:gsub("%s+", ""))
+
+        playerName:SetTextColor(classColor[class][1], classColor[class][2], classColor[class][3], 1);
+    end
+    container.setPlayerName = SetPlayerName;
 
     local drop = {}
     drop = AceGUI:Create("Dropdown")
@@ -165,12 +231,12 @@ function PersonalPlayerBlacklist:CreateBlacklistPopupWindow()
     )
     drop.frame:SetParent(container)
     drop.frame:Show()
-    drop.frame:SetPoint("LEFT", container, "TOPLEFT", 20, -50)
+    drop.frame:SetPoint("LEFT", container, "TOPLEFT", 20, -52)
 
     container.dropdown = drop;
     local noteLabel = container:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
     noteLabel:SetPoint("LEFT", drop.frame, "LEFT", 0, -30)
-    noteLabel:SetTextColor(colorR, colorG, colorB, colorA)
+    --noteLabel:SetTextColor(colorR, colorG, colorB, colorA)
     noteLabel:SetText("Note (optional):")
 
     local editBoxContainer = CreateFrame("Frame", nil, container, BackdropTemplateMixin and "BackdropTemplate")
@@ -226,25 +292,25 @@ function PersonalPlayerBlacklist:CreateListFrame()
         function(this)
             this.frame:GetParent():Hide()
         end)
-        local scrollFrameBg = CreateFrame("Frame", "titleBG", container,
+    local scrollFrameBg = CreateFrame("Frame", "titleBG", container,
         BackdropTemplateMixin and "BackdropTemplate")
-        scrollFrameBg:SetWidth(150)
-        scrollFrameBg:SetHeight(30)
-        scrollFrameBg:SetBackdrop(
+    scrollFrameBg:SetWidth(150)
+    scrollFrameBg:SetHeight(30)
+    scrollFrameBg:SetBackdrop(
         {
             bgFile = "Interface\\ChatFrame\\ChatFrameBackground",
-            edgeFile = "Interface\\DialogFrame\\UI-DialogBox-Border",
+            edgeFile = "Interface\\FriendsFrame\\UI-Toast-Border",
             tile = true,
             tileSize = 32,
-            edgeSize = 15,
+            edgeSize = 5,
             insets = { left = 2, right = 2, top = 2, bottom = 2 }
         })
-        scrollFrameBg:SetBackdropColor(0, 0, 0, 1)
-        scrollFrameBg:SetPoint("TOPLEFT", container, "TOPLEFT", 10, -80)
-        scrollFrameBg:SetPoint("BOTTOMRIGHT", container, "BOTTOMRIGHT", -10, 40)
+    scrollFrameBg:SetBackdropColor(0, 0, 0, 1)
+    scrollFrameBg:SetPoint("TOPLEFT", container, "TOPLEFT", 10, -80)
+    scrollFrameBg:SetPoint("BOTTOMRIGHT", container, "BOTTOMRIGHT", -10, 40)
     -- Create the scrolling parent frame and size it to fit inside the texture
     local scrollFrame = CreateFrame("ScrollFrame", nil, scrollFrameBg, "UIPanelScrollFrameTemplate")
-    scrollFrame:SetPoint("TOPLEFT", scrollFrameBg, "TOPLEFT", 0, -7)
+    scrollFrame:SetPoint("TOPLEFT", scrollFrameBg, "TOPLEFT", 0, -4)
     scrollFrame:SetPoint("BOTTOMRIGHT", scrollFrameBg, "BOTTOMRIGHT", -27, 5)
     -- Create the scrolling child frame, set its width to fit, and give it an arbitrary minimum height (such as 1)
     local scrollChild = CreateFrame("Frame")
@@ -256,7 +322,7 @@ function PersonalPlayerBlacklist:CreateListFrame()
     PersonalPlayerBlacklist:CreateColumnHeader("Realm", scrollFrame, 105, "scroll", scrollChild)
     PersonalPlayerBlacklist:CreateColumnHeader("Class", scrollFrame, 110, "scroll", scrollChild)
     PersonalPlayerBlacklist:CreateColumnHeader("Reason", scrollFrame, 80, "scroll", scrollChild)
-    PersonalPlayerBlacklist:CreateColumnHeader("Date", scrollFrame, 90, "scroll", scrollChild)
+    PersonalPlayerBlacklist:CreateColumnHeader("Date Added", scrollFrame, 90, "scroll", scrollChild)
     PersonalPlayerBlacklist:CreateColumnHeader("Notes", scrollFrame, 260, "scroll", scrollChild)
 
     --PersonalPlayerBlacklist:CreateTableButton(scrollcontainer.frame,1);
@@ -271,16 +337,40 @@ function PersonalPlayerBlacklist:CreateListFrame()
     container:Hide()
     local function AddEntry(player)
         PersonalPlayerBlacklist:CreateTableButton(scrollChild, index, player);
+        lastSort = not lastSort
+        PersonalPlayerBlacklist:SortPlayerBlacklist(lastSortID, scrollChild)
         index = index + 1
     end
+    local function RemoveEntry(player)
+        for i = 1, #FilteredScrollButtons do
+            if FilteredScrollButtons[i].name:GetText() == player["name"] and FilteredScrollButtons[i].server:GetText() == player["server"] then
+                FilteredScrollButtons[i]:Hide()
+                table.remove(FilteredScrollButtons, i)
+                lastSort = not lastSort
+                PersonalPlayerBlacklist:SortPlayerBlacklist(lastSortID, scrollChild)
+                index = index - 1
+                break
+            end
+        end
+    end
+    local function UpdateEntry(player)
+        for i = 1, #FilteredScrollButtons do
+            if FilteredScrollButtons[i].name:GetText() == player["name"] and FilteredScrollButtons[i].server:GetText() == player["server"] then
+                FilteredScrollButtons[i].reason:SetText(player["reason"])
+                FilteredScrollButtons[i].notes:SetText(player["notes"])
+                break
+            end
+        end
+    end
     container.addEntry = AddEntry
-
+    container.removeEntry = RemoveEntry
+    container.updateEntry = UpdateEntry
     container:SetScript("OnShow",
-    function(self)
-        lastSort=true
-        lastSortID=5
-        PersonalPlayerBlacklist:SortPlayerBlacklist(5, scrollChild)
-    end)
+        function(self)
+            lastSort = true
+            lastSortID = 5
+            PersonalPlayerBlacklist:SortPlayerBlacklist(5, scrollChild)
+        end)
     return container;
 end
 
@@ -301,7 +391,7 @@ function PersonalPlayerBlacklist:CreateColumnHeader(text, parent, width, name, c
     Header:SetID(columnCount)
 
     if columnCount == 1 then
-        Header:SetPoint("TOPLEFT", parent, "TOPLEFT", 3, 29)
+        Header:SetPoint("TOPLEFT", parent, "TOPLEFT", 3, 27)
     else
         Header:SetPoint("LEFT", name .. "Header" .. columnCount - 1, "RIGHT", 0, 0)
     end
@@ -342,17 +432,31 @@ function PersonalPlayerBlacklist:SortPlayerBlacklist(sortBy, parent)
                     return b.reason:GetText() < a.reason:GetText()
                 end
             elseif sortBy == 5 then
-                local amonth, aday, ayear = strsplit("/", a.date:GetText())
+                local firstHalfa, secondHalfa = strsplit(" ",
+                    PersonalPlayerBlacklist.db.global.blacklistedPlayers[a.name:GetText() .. "-" .. a.server:GetText()]
+                    ["date"])
+                local amonth, aday, ayear = strsplit("/", firstHalfa)
+                local ahour, amin, asec = strsplit(":", secondHalfa)
                 local dateTbla = {
                     year = ayear,
                     month = amonth,
                     day = aday,
+                    hour = ahour,
+                    min = amin,
+                    sec = asec
                 }
-                local bmonth, bday, byear = strsplit("/", b.date:GetText())
+                local firstHalfb, secondHalfb = strsplit(" ",
+                    PersonalPlayerBlacklist.db.global.blacklistedPlayers[b.name:GetText() .. "-" .. b.server:GetText()]
+                    ["date"])
+                local bmonth, bday, byear = strsplit("/", firstHalfb)
+                local bhour, bmin, bsec = strsplit(":", secondHalfb)
                 local dateTblb = {
                     year = byear,
                     month = bmonth,
                     day = bday,
+                    hour = bhour,
+                    min = bmin,
+                    sec = bsec
                 }
                 local adate = time(dateTbla)
 
@@ -392,8 +496,14 @@ function PersonalPlayerBlacklist:CreateTableButton(parent, index, player)
     end
 
     FilteredScrollButtons[index]:SetSize(800, 20)
-    FilteredScrollButtons[index]:RegisterForClicks("LeftButtonUp")
-    --UnfilteredScrollButtons[index]:SetScript("OnClick", FilterScrollClick)
+    FilteredScrollButtons[index]:RegisterForClicks("RightButtonDown")
+
+    local function createDropdown(self)
+        PersonalPlayerBlacklist:CreateDropdown(self)
+    end
+
+    FilteredScrollButtons[index]:SetScript("OnClick", createDropdown)
+
 
     -- set name style
     FilteredScrollButtons[index].name:SetWidth(100)
@@ -412,15 +522,16 @@ function PersonalPlayerBlacklist:CreateTableButton(parent, index, player)
     FilteredScrollButtons[index].class:SetWidth(100)
     FilteredScrollButtons[index].class:SetJustifyH("LEFT")
     --UnfilteredScrollButtons[index].class:SetWordWrap(false)
-    FilteredScrollButtons[index].class:SetText(player["class"])
-    local class=string.upper(player["class"]:gsub("%s+", ""))
-    FilteredScrollButtons[index].class:SetTextColor(classColor[class][1],classColor[class][2],classColor[class][3],1);
+    local class = string.upper(player["class"]:gsub("%s+", ""))
+    FilteredScrollButtons[index].class:SetText(className[class])
+
+    FilteredScrollButtons[index].class:SetTextColor(classColor[class][1], classColor[class][2], classColor[class][3], 1);
     FilteredScrollButtons[index].reason = FilteredScrollButtons[index]:CreateFontString("FontString", "OVERLAY",
         "GameFontHighlight")
     FilteredScrollButtons[index].reason:SetPoint("LEFT", FilteredScrollButtons[index].class, "RIGHT", 10, 0)
     FilteredScrollButtons[index].reason:SetWidth(70)
     FilteredScrollButtons[index].reason:SetJustifyH("LEFT")
-    FilteredScrollButtons[index].reason:SetText(player["reason"])
+    FilteredScrollButtons[index].reason:SetTextColor(1, 0, 0, 1)
     if player["reason"] and player["reason"] ~= "" then
         FilteredScrollButtons[index].reason:SetText(player["reason"])
     else
@@ -428,17 +539,19 @@ function PersonalPlayerBlacklist:CreateTableButton(parent, index, player)
     end
 
     FilteredScrollButtons[index].date = FilteredScrollButtons[index]:CreateFontString("FontString", "OVERLAY",
-        "GameFontHighlight")
+        "GameFontNormal")
     FilteredScrollButtons[index].date:SetPoint("LEFT", FilteredScrollButtons[index].reason, "RIGHT", 10, 0)
     FilteredScrollButtons[index].date:SetWidth(80)
     FilteredScrollButtons[index].date:SetJustifyH("LEFT")
-    FilteredScrollButtons[index].date:SetText(player["date"])
+    local date, time = strsplit(" ", player["date"])
+    FilteredScrollButtons[index].date:SetText(date)
 
     FilteredScrollButtons[index].notes = FilteredScrollButtons[index]:CreateFontString("FontString", "OVERLAY",
         "GameFontHighlight")
     FilteredScrollButtons[index].notes:SetPoint("LEFT", FilteredScrollButtons[index].date, "RIGHT", 10, 0)
     FilteredScrollButtons[index].notes:SetWidth(250)
     FilteredScrollButtons[index].notes:SetJustifyH("LEFT")
+    FilteredScrollButtons[index].notes:SetMaxLines(1)
     if player["notes"] and player["notes"] ~= "" then
         FilteredScrollButtons[index].notes:SetText(player["notes"])
     else
@@ -449,4 +562,13 @@ function PersonalPlayerBlacklist:CreateTableButton(parent, index, player)
 
     FilteredScrollButtons[index]:Show()
     -- create filter style
+end
+
+function PersonalPlayerBlacklist:CreateDropdown(self)
+    local playerName = self.name:GetText() .. "-" .. self.server:GetText()
+    MenuUtil.CreateContextMenu(UIParent, function(ownerRegion, rootDescription)
+        rootDescription:CreateTitle("Select option")
+        rootDescription:CreateButton("Edit", function() PersonalPlayerBlacklist:EditEntry(playerName) end)
+        rootDescription:CreateButton("Remove", function() PersonalPlayerBlacklist:RemovePlayer(playerName) end)
+    end)
 end
