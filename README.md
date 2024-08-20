@@ -6,7 +6,7 @@
 
 ## Features
 
-- **Easy Management**: Add players from anywhere (Unitframe, chat, LFG). Browse, edit or remove entries from your blacklist in the list window.
+- **Easy Management**: Add players from anywhere (Unitframe, Chat, LFG). Browse, edit or remove entries from your blacklist in the list window.
 - **Notifications**: Get notified when a blacklisted player is in your group.
 - **Tooltips**: See information about blacklisted players in their tooltips.
 - **Customization**: Freely move all of the addon's windows, toggle extra popups, and more.
