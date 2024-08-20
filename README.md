@@ -32,7 +32,7 @@
 ![Screenshot 1](https://github.com/yourusername/BlacklistWarden/screenshots/screenshot1.png)
 ![Screenshot 2](https://github.com/yourusername/BlacklistWarden/screenshots/screenshot2.png)
 
-## TO-DO
+## To-Do
 
 - Localization
 - Search feature
