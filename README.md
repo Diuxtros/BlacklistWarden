@@ -31,14 +31,12 @@
 
 ![image](https://github.com/user-attachments/assets/d63e323d-453b-4520-b510-07fb3e295fdf)
 
-
-![Uploading image.png…]()
-
+![image](https://github.com/user-attachments/assets/f4522181-b382-44ff-a78c-06056bda088f)
 
 ![image](https://github.com/user-attachments/assets/c676e3b3-edce-4426-a2c7-21bf0e3d16ec)
 
+<sub>*Screenshots taken with ElvUI </sub>
 
-*Screenshots taken with ElvUI
 
 ## To-Do
 
