@@ -33,8 +33,7 @@
 
 ![image](https://github.com/user-attachments/assets/f4522181-b382-44ff-a78c-06056bda088f)
 
-![image](https://github.com/user-attachments/assets/c676e3b3-edce-4426-a2c7-21bf0e3d16ec)
-
+![image](https://github.com/user-attachments/assets/e11d176b-bced-4207-bfe9-a2b932e19a23)
 <sub>*Screenshots taken with ElvUI </sub>
 
 
