@@ -72,6 +72,16 @@ local options = {
             get = "GetShowIcon",
             width = "full"
         },
+        leaverText = {
+            order = 8,
+            type = 'toggle',
+            name = 'Toggle leaver messages',
+            desc =
+            'Toggles a chat message when other players leave the group, which provides a link you can right click to make it easier to add leavers.',
+            set = "SetLeaverText",
+            get = "GetLeaverText",
+            width = "full"
+        },
         spacer1 = {
             order = 2,
             type = "description",
@@ -79,6 +89,11 @@ local options = {
         },
         spacer2 = {
             order = 5,
+            type = "description",
+            name = "\n\n\n\n",
+        },
+        spacer3 = {
+            order = 7,
             type = "description",
             name = "\n\n\n\n",
         },
@@ -116,6 +131,7 @@ local defaults = {
             hide = false,
         },
         lockWindows = true,
+        leaverText = true,
         blacklistPopupFrame = {
             point = "TOP",
             relativeFrame = nil,
@@ -139,7 +155,21 @@ local defaults = {
         },
     }
 }
-
+local classNamesById = {
+    "WARRIOR",
+    "PALADIN",
+    "HUNTER",
+    "ROGUE",
+    "PRIEST",
+    "DEATHKNIGHT",
+    "SHAMAN",
+    "MAGE",
+    "WARLOCK",
+    "MONK",
+    "DRUID",
+    "DEMONHUNTER",
+    "EVOKER",
+}
 -- More libs
 LibStub("AceConfig-3.0"):RegisterOptionsTable(addon.addonName, options)
 local aceDialog = LibStub("AceConfigDialog-3.0");
@@ -171,20 +201,27 @@ end
 -- Temporary player info to store
 local playerInfo = {}
 
+local previousMembers = {}
 -- Callback for GROUP_ROSTER_UPDATE, checks and warns if any player is in your blacklist
 function BlacklistWarden:CheckPlayersOnGroupUpdate()
     local groupCount = GetNumGroupMembers()
     local name, realm;
-    if groupCount > BlacklistWarden.db.global.previousGroupSize then --check only if someone joined
-        for i = 1, groupCount do
-            if groupCount < 6 then
-                name, realm = UnitName("party" .. i)
-            else
-                name, realm = UnitName("raid" .. i)
-            end
-            if not realm then realm = GetRealmName() end
-            if name and realm then
-                local fullname = name .. "-" .. realm;
+    local newMembers = {}
+    local unitID;
+    for i = 1, groupCount do
+        if groupCount < 6 then
+            unitID = "party" .. i
+        else
+            unitID = "raid" .. i
+        end
+        name, realm = UnitName(unitID)
+        if not realm then realm = GetRealmName() end
+        if name and realm then
+            local fullname = name .. "-" .. realm;
+            local classBase, classId = UnitClassBase(unitID)
+            newMembers[fullname] = classId
+            --check only if someone joined
+            if groupCount > BlacklistWarden.db.global.previousGroupSize then
                 if BlacklistWarden:IsPlayerInList(fullname) then
                     if blacklistPopupWarning then
                         blacklistPopupWarning.setPlayerData(BlacklistWarden.db.global
@@ -195,6 +232,23 @@ function BlacklistWarden:CheckPlayersOnGroupUpdate()
             end
         end
     end
+    local playername = UnitName("player") .. "-" .. GetRealmName()
+    if BlacklistWarden.db.profile.leaverText then
+        if newMembers[playername] or BlacklistWarden.db.global.previousGroupSize == 2 then
+            for entry in pairs(previousMembers) do
+                if not newMembers[entry] and entry ~= playername then
+                    -- Player has left the group
+                    print("|cffFFFF00Blacklist Warden: |Hplayer:" ..
+                        entry ..
+                        ":" ..
+                        previousMembers[entry] + 4000000000 .. "|h|cffd80000[" .. entry .. "]|r|h has left the group.")
+                end
+            end
+        end
+    end
+
+
+    previousMembers = newMembers
     BlacklistWarden.db.global.previousGroupSize = groupCount;
 end
 
@@ -217,6 +271,14 @@ end
 
 function BlacklistWarden:SetShowPopup(info, value)
     BlacklistWarden.db.profile.showPopup = value;
+end
+
+function BlacklistWarden:GetLeaverText(info)
+    return BlacklistWarden.db.profile.leaverText;
+end
+
+function BlacklistWarden:SetLeaverText(info, value)
+    BlacklistWarden.db.profile.leaverText = value;
 end
 
 function BlacklistWarden:GetLockWindows(info)
@@ -480,8 +542,9 @@ do
     function module:MenuHandler(owner, rootDescription, contextData)
         local realm;
         local name;
-        local class;
+        local class = nil;
         local _;
+
         if not contextData then
             if rootDescription.tag == "MENU_LFG_FRAME_SEARCH_ENTRY" or rootDescription.tag == "MENU_LFG_FRAME_MEMBER_APPLY" then
                 name, realm, class = self:GetLFGInfo(owner)
@@ -497,16 +560,21 @@ do
             local guid
 
             if contextData.lineID then
-                guid = C_ChatInfo.GetChatLineSenderGUID(contextData.lineID)
+                if tonumber(contextData.lineID) < 4000000000 then
+                    guid = C_ChatInfo.GetChatLineSenderGUID(contextData.lineID)
+                else
+                    class = classNamesById[tonumber(contextData.lineID) - 4000000000]
+                end
             elseif contextData.unit then
                 guid = UnitGUID(contextData.unit)
             else
                 return
             end
-
-            _, class, _, _, _, _ = GetPlayerInfoByGUID(guid)
+            if not class and guid then
+                _, class, _, _, _, _ = GetPlayerInfoByGUID(guid)
+            end
         end
-
+        if not class then return end
         local popupText = "";
 
         BlacklistWarden:SavePlayerInfoValue("playerServer", realm)
