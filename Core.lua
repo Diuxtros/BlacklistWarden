@@ -165,7 +165,7 @@ function BlacklistWarden:OnEnable()
     blacklistPopupWindow:SetMovable(not BlacklistWarden.db.profile.lockWindows)
     blacklistPopupWarning:SetMovable(not BlacklistWarden.db.profile.lockWindows)
     blacklistListWindow:SetMovable(not BlacklistWarden.db.profile.lockWindows)
-    BlacklistWarden.db.global.previousGroupSize = 0
+    BlacklistWarden.db.global.previousGroupSize = GetNumGroupMembers()
 end
 
 -- Temporary player info to store
