@@ -34,6 +34,7 @@
 ![image](https://github.com/user-attachments/assets/f4522181-b382-44ff-a78c-06056bda088f)
 
 ![image](https://github.com/user-attachments/assets/e11d176b-bced-4207-bfe9-a2b932e19a23)
+
 <sub>*Screenshots taken with ElvUI </sub>
 
 
