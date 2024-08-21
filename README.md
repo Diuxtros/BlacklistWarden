@@ -29,11 +29,14 @@
 
 ## Screenshots
 
-![image](https://github.com/user-attachments/assets/9e22bc74-346f-4dbe-a33c-ff8f7668422b)
+![image](https://github.com/user-attachments/assets/d63e323d-453b-4520-b510-07fb3e295fdf)
 
-![image](https://github.com/user-attachments/assets/fa113806-c38b-4e51-805d-05d6e478e11c)
 
-![image](https://github.com/user-attachments/assets/95bd54b9-db1a-4589-8678-a17f7c884966)
+![Uploading image.png…]()
+
+
+![image](https://github.com/user-attachments/assets/c676e3b3-edce-4426-a2c7-21bf0e3d16ec)
+
 
 *Screenshots taken with ElvUI
 
