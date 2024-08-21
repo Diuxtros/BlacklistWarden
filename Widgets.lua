@@ -223,7 +223,7 @@ function BlacklistWarden:CreateBlacklistPopupWindow()
     playerName:SetPoint("TOP", container, "TOP", 0, -20)
     playerName:SetWordWrap(true)
     playerName:SetMaxLines(1)
-
+    playerName:SetWidth(200)
     local function SetPlayerName(player)
         playerName:SetText(player["name"] .. "-" .. player["server"])
         local class = string.upper(player["class"]:gsub("%s+", ""))
