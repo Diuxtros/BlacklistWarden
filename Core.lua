@@ -234,7 +234,6 @@ function BlacklistWarden:CheckPlayersOnGroupUpdate()
     end
     local playername = UnitName("player") .. "-" .. GetRealmName()
     if BlacklistWarden.db.profile.leaverText then
-        if newMembers[playername] or BlacklistWarden.db.global.previousGroupSize == 2 then
             for entry in pairs(previousMembers) do
                 if not newMembers[entry] and entry ~= playername then
                     -- Player has left the group
@@ -244,7 +243,6 @@ function BlacklistWarden:CheckPlayersOnGroupUpdate()
                         previousMembers[entry] + 4000000000 .. "|h|cffd80000[" .. entry .. "]|r|h has left the group.")
                 end
             end
-        end
     end
 
 
