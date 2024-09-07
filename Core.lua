@@ -234,15 +234,15 @@ function BlacklistWarden:CheckPlayersOnGroupUpdate()
     end
     local playername = UnitName("player") .. "-" .. GetRealmName()
     if BlacklistWarden.db.profile.leaverText then
-            for entry in pairs(previousMembers) do
-                if not newMembers[entry] and entry ~= playername then
-                    -- Player has left the group
-                    print("|cffFFFF00Blacklist Warden: |Hplayer:" ..
-                        entry ..
-                        ":" ..
-                        previousMembers[entry] + 4000000000 .. "|h|cffd80000[" .. entry .. "]|r|h has left the group.")
-                end
+        for entry in pairs(previousMembers) do
+            if not newMembers[entry] and entry ~= playername then
+                -- Player has left the group
+                print("|cffFFFF00Blacklist Warden: |Hplayer:" ..
+                    entry ..
+                    ":" ..
+                    previousMembers[entry] + 4000000000 .. "|h|cffd80000[" .. entry .. "]|r|h has left the group.")
             end
+        end
     end
 
 
@@ -400,7 +400,15 @@ function BlacklistWarden:EditEntry(playername)
         end
     end
     blacklistPopupWindow.editbox:SetText(player["notes"])
-    blacklistPopupWindow:Show()
+    BlacklistWarden:TogglePopupWindow(true)
+end
+
+function BlacklistWarden:TogglePopupWindow(on)
+    if on then
+        blacklistPopupWindow:Show()
+    else
+        blacklistPopupWindow:Hide()
+    end
 end
 
 -- Remove player from blacklist

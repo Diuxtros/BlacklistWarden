@@ -274,6 +274,9 @@ function BlacklistWarden:CreateBlacklistPopupWindow()
     editbox:SetMultiLine(true)
     editbox:SetAutoFocus(false)
     editbox:SetMaxLetters(140)
+    editbox:SetScript("OnEnterPressed", function(self)
+        self:ClearFocus()
+    end)
     --editbox:SetScript("OnShow", function(this) editbox:SetFocus() end)
     container.editbox = editbox;
     container:Hide()
@@ -295,7 +298,7 @@ function BlacklistWarden:CreateListFrame()
     columnCount   = 0
     local heading = {}
     heading       = AceGUI:Create("Heading")
-    heading:SetText("Blacklist Warden - All players")
+    heading:SetText("Blacklist Warden")
     heading:SetWidth(container:GetWidth() - 5)
     heading.frame:SetParent(container)
     heading.frame:SetPoint("TOP", container, "TOP", 0, -20)
@@ -308,26 +311,21 @@ function BlacklistWarden:CreateListFrame()
         function(this)
             this.frame:GetParent():Hide()
         end)
-    local scrollFrameBg = CreateFrame("Frame", "titleBG", container,
-        BackdropTemplateMixin and "BackdropTemplate")
-    scrollFrameBg:SetWidth(150)
-    scrollFrameBg:SetHeight(30)
-    scrollFrameBg:SetBackdrop(
-        {
-            bgFile = "Interface\\ChatFrame\\ChatFrameBackground",
-            edgeFile = "Interface\\FriendsFrame\\UI-Toast-Border",
-            tile = true,
-            tileSize = 32,
-            edgeSize = 5,
-            insets = { left = 2, right = 2, top = 2, bottom = 2 }
-        })
-    scrollFrameBg:SetBackdropColor(0, 0, 0, 1)
-    scrollFrameBg:SetPoint("TOPLEFT", container, "TOPLEFT", 10, -80)
-    scrollFrameBg:SetPoint("BOTTOMRIGHT", container, "BOTTOMRIGHT", -10, 40)
+
+    local tabgroup = AceGUI:Create("TabGroup")
+    tabgroup:SetTabs { { value = "1", text = "Player List" }, { value = "2", text = "Add player" } }
+    tabgroup.frame:SetParent(container)
+    tabgroup.frame:SetPoint("TOPLEFT", container, "TOPLEFT", 5, -30)
+    tabgroup.frame:SetPoint("BOTTOMRIGHT", container, "BOTTOMRIGHT", -5, 30)
+    tabgroup:SelectTab("1")
+
+
+
+
     -- Create the scrolling parent frame and size it to fit inside the texture
-    local scrollFrame = CreateFrame("ScrollFrame", nil, scrollFrameBg, "UIPanelScrollFrameTemplate")
-    scrollFrame:SetPoint("TOPLEFT", scrollFrameBg, "TOPLEFT", 0, -4)
-    scrollFrame:SetPoint("BOTTOMRIGHT", scrollFrameBg, "BOTTOMRIGHT", -27, 5)
+    local scrollFrame = CreateFrame("ScrollFrame", nil, tabgroup.frame, "UIPanelScrollFrameTemplate")
+    scrollFrame:SetPoint("TOPLEFT", tabgroup.frame, "TOPLEFT", 0, -60)
+    scrollFrame:SetPoint("BOTTOMRIGHT", tabgroup.frame, "BOTTOMRIGHT", -28, 8)
     -- Create the scrolling child frame, set its width to fit, and give it an arbitrary minimum height (such as 1)
     local scrollChild = CreateFrame("Frame")
     scrollFrame:SetScrollChild(scrollChild)
@@ -339,9 +337,123 @@ function BlacklistWarden:CreateListFrame()
     BlacklistWarden:CreateColumnHeader("Class", scrollFrame, 110, "scroll", scrollChild)
     BlacklistWarden:CreateColumnHeader("Reason", scrollFrame, 80, "scroll", scrollChild)
     BlacklistWarden:CreateColumnHeader("Date Added", scrollFrame, 90, "scroll", scrollChild)
-    BlacklistWarden:CreateColumnHeader("Notes", scrollFrame, 265, "scroll", scrollChild)
+    BlacklistWarden:CreateColumnHeader("Notes", scrollFrame, 288, "scroll", scrollChild)
 
     --BlacklistWarden:CreateTableButton(scrollcontainer.frame,1);
+
+    local addFrame = AceGUI:Create("InlineGroup")
+    addFrame.frame:SetParent(tabgroup.frame)
+    addFrame.frame:SetPoint("TOPLEFT", tabgroup.frame, "TOPLEFT", 10, -50)
+    addFrame.frame:SetPoint("BOTTOMRIGHT", tabgroup.frame, "BOTTOMRIGHT", -10, 100)
+    addFrame:SetTitle("Add to blacklist: ")
+
+    local nameBox = AceGUI:Create("EditBox")
+    nameBox:SetLabel("Name:")
+    nameBox:SetWidth(200)
+    nameBox.frame:SetParent(addFrame.frame)
+    nameBox:DisableButton(true)
+    nameBox.frame:SetPoint("TOPLEFT", addFrame.frame, "TOPLEFT", 30, -30)
+    nameBox.frame:Show()
+
+    local separator = AceGUI:Create("Label")
+    separator:SetText("-")
+    separator.frame:SetParent(addFrame.frame)
+    separator.frame:SetPoint("LEFT", nameBox.frame, "RIGHT", 6, -7)
+    separator.frame:SetPoint("RIGHT", nameBox.frame, "RIGHT", 15, -7)
+    separator.frame:Show()
+
+    local realmBox = AceGUI:Create("EditBox")
+    realmBox:SetLabel("Realm:")
+    realmBox:SetWidth(200)
+    realmBox:DisableButton(true)
+    realmBox.frame:SetParent(addFrame.frame)
+    realmBox.frame:SetPoint("LEFT", separator.frame, "RIGHT", 1, 7)
+    realmBox.frame:Show()
+
+    local classDropdown = {}
+    classDropdown = AceGUI:Create("Dropdown")
+    classDropdown:SetList(className)
+    classDropdown:SetWidth(200)
+    classDropdown:SetValue("DEATHKNIGHT")
+    classDropdown:SetLabel("Class:")
+
+    classDropdown.frame:SetParent(addFrame.frame)
+    classDropdown.frame:Show()
+    classDropdown.frame:SetPoint("TOPLEFT", nameBox.frame, "BOTTOMLEFT", 0, -10)
+    classDropdown:SetCallback("OnValueChanged", function(this, event, item)
+        BlacklistWarden:SavePlayerInfoValue("playerClass",
+            item)
+    end
+    )
+
+    local reasonDropdown = {}
+    reasonDropdown = AceGUI:Create("Dropdown")
+    reasonDropdown:SetList(BlacklistWarden.db.global.blacklistPopupWindowOptions)
+    reasonDropdown:SetWidth(200)
+    reasonDropdown:SetValue(1)
+    reasonDropdown:SetLabel("Reason:")
+    reasonDropdown:SetCallback("OnValueChanged", function(this, event, item)
+        BlacklistWarden:SavePlayerInfoValue("reason",
+            BlacklistWarden.db.global.blacklistPopupWindowOptions[item])
+    end
+    )
+    reasonDropdown.frame:SetParent(addFrame.frame)
+    reasonDropdown.frame:Show()
+    reasonDropdown.frame:SetPoint("LEFT", classDropdown.frame, "RIGHT", 14, 0)
+
+    local notesBox = AceGUI:Create("MultiLineEditBox")
+    notesBox:SetLabel("Note (optional):")
+    notesBox:SetWidth(410)
+    notesBox:DisableButton(true)
+    notesBox.frame:SetParent(addFrame.frame)
+    notesBox.frame:SetPoint("TOPLEFT", classDropdown.frame, "BOTTOMLEFT", 0, -10)
+    notesBox.frame:Show()
+    notesBox:SetMaxLetters(140)
+    notesBox:SetNumLines(2)
+
+    local function AddPlayer()
+        if nameBox:GetText() == "" or realmBox:GetText() == "" then
+            print("|cffFFFF00Blacklist Warden:|r Name or realm missing.")
+        else
+            BlacklistWarden:SavePlayerInfoValue("playerName", nameBox:GetText():match( "^%s*(.-)%s*$" ))
+            BlacklistWarden:SavePlayerInfoValue("playerServer", realmBox:GetText():match( "^%s*(.-)%s*$" ))
+            BlacklistWarden:SavePlayerInfoValue("notes", notesBox:GetText())
+            BlacklistWarden:WritePlayerToDisk()
+            nameBox:SetText("")
+            realmBox:SetText("")
+            notesBox:SetText("")
+            reasonDropdown:SetValue(1)
+            BlacklistWarden:SavePlayerInfoValue("reason",
+                BlacklistWarden.db.global.blacklistPopupWindowOptions[1])
+            classDropdown:SetValue("DEATHKNIGHT")
+            BlacklistWarden:SavePlayerInfoValue("playerClass",
+            "DEATHKNIGHT")
+        end
+    end
+
+    local addButton = BlacklistWarden:CreateStandardButton("Add", 100, addFrame.frame)
+    addButton.frame:SetPoint("BOTTOMLEFT", addFrame.frame, "BOTTOMLEFT", 30, 30)
+    addButton:SetCallback("OnClick", function() AddPlayer(); end)
+
+    addFrame.frame:Hide()
+    local function SelectGroup(container, event, group)
+        if group == "1" then
+            scrollFrame:Show()
+            addFrame.frame:Hide()
+        elseif group == "2" then
+            scrollFrame:Hide()
+            addFrame.frame:Show();
+            BlacklistWarden:TogglePopupWindow(false)
+            reasonDropdown:SetValue(1)
+            BlacklistWarden:SavePlayerInfoValue("reason",
+                BlacklistWarden.db.global.blacklistPopupWindowOptions[1])
+            classDropdown:SetValue("DEATHKNIGHT")
+            BlacklistWarden:SavePlayerInfoValue("playerClass",
+            "DEATHKNIGHT")
+        end
+    end
+    tabgroup:SetCallback("OnGroupSelected", SelectGroup)
+
 
     FilteredScrollButtons = {}
     local index = 1
@@ -378,6 +490,8 @@ function BlacklistWarden:CreateListFrame()
             end
         end
     end
+
+
     container.addEntry = AddEntry
     container.removeEntry = RemoveEntry
     container.updateEntry = UpdateEntry
@@ -386,6 +500,7 @@ function BlacklistWarden:CreateListFrame()
             lastSort = true
             lastSortID = 5
             BlacklistWarden:SortPlayerBlacklist(5, scrollChild)
+            tabgroup:SelectTab("1")
         end)
     return container;
 end
@@ -408,7 +523,7 @@ function BlacklistWarden:CreateColumnHeader(text, parent, width, name, child)
     Header:SetID(columnCount)
 
     if columnCount == 1 then
-        Header:SetPoint("TOPLEFT", parent, "TOPLEFT", 1, 27)
+        Header:SetPoint("TOPLEFT", parent, "TOPLEFT", 3, 27)
     else
         Header:SetPoint("LEFT", name .. "Header" .. columnCount - 1, "RIGHT", 0, 0)
     end
