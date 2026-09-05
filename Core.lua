@@ -2,7 +2,7 @@
 -- Main file, handles addon logic
 local ADDON_NAME, addon = ...
 addon.addonName = "BlacklistWarden"
-addon.addonTitle = "Blacklist Warden"
+addon.addonTitle = addon.L["Blacklist Warden"]
 
 -- Addon namespace
 BlacklistWarden = LibStub("AceAddon-3.0"):NewAddon(addon.addonName, "AceConsole-3.0", "AceHook-3.0", "AceEvent-3.0",
@@ -17,10 +17,10 @@ local LDB = LibStub("LibDataBroker-1.1"):NewDataObject(addon.addonName, {
     text = "PPB",
     icon = "Interface\\Icons\\Spell_Mage_Evanesce",
     OnTooltipShow = function(tooltip)
-        tooltip:SetText("Blacklist Warden")
+        tooltip:SetText(addon.L["Blacklist Warden"])
         tooltip:AddLine(" ")
-        tooltip:AddLine("Left click: |cffFFFFFFOpen player list")
-        tooltip:AddLine("Right click: |cffFFFFFFOpen settings")
+        tooltip:AddLine(addon.L["Left click: |cffFFFFFFOpen player list"])
+        tooltip:AddLine(addon.L["Right click: |cffFFFFFFOpen settings"])
         tooltip:Show()
     end,
     OnClick = function(frame, button)
@@ -42,70 +42,69 @@ local options = {
         headerGeneralOptions = {
             order = 0,
             type = "header",
-            name = "General Options",
+            name = addon.L["General Options"],
         },
         blacklistPopup = {
             order = 1,
             type = 'toggle',
-            name = 'Toggle blacklist popup',
-            desc =
-            'Shows a popup when blacklisting a player that lets you add extra information, otherwise adds the player with default values.',
+            name = addon.L['Toggle blacklist popup'],
+            desc = addon.L['Shows a popup when blacklisting a player that lets you add extra information, otherwise adds the player with default values.'],
             set = "SetShowPopup",
             get = "GetShowPopup",
             width = "full"
         },
-        lockWindows = {
-            order = 4,
+        blacklistAnnouncement = {
+            order = 2,
             type = 'toggle',
-            name = 'Lock windows',
-            desc = 'Locks the addon\'s windows, preventing them from moving.',
+            name = addon.L['Enable blacklist announcements'],
+            desc = addon.L['Announces in the party channel when a blacklisted player is detected in the group.'],
+            set = "SetBlacklistAnnouncement",
+            get = "GetBlacklistAnnouncement",
+            width = "full"
+        },
+        lockWindows = {
+            order = 3,
+            type = 'toggle',
+            name = addon.L['Lock windows'],
+            desc = addon.L['Locks the addon\'s windows, preventing them from moving.'],
             set = "SetLockWindows",
             get = "GetLockWindows",
             width = "full"
         },
         minimapIcon = {
-            order = 6,
+            order = 4,
             type = 'toggle',
-            name = 'Toggle minimap icon',
-            desc = 'Toggles the minimap icon.',
+            name = addon.L['Toggle minimap icon'],
+            desc = addon.L['Toggles the minimap icon.'],
             set = "SetShowIcon",
             get = "GetShowIcon",
             width = "full"
         },
         leaverText = {
-            order = 8,
+            order = 5,
             type = 'toggle',
-            name = 'Toggle leaver messages',
-            desc =
-            'Toggles a chat message when other players leave the group, which provides a link you can right click to make it easier to add leavers.',
+            name = addon.L['Toggle leaver messages'],
+            desc = addon.L['Toggles a chat message when other players leave the group, which provides a link you can right click to make it easier to add leavers.'],
             set = "SetLeaverText",
             get = "GetLeaverText",
             width = "full"
         },
-        spacer1 = {
-            order = 2,
-            type = "description",
-            name = "\n\n\n\n",
-        },
-        spacer2 = {
-            order = 5,
-            type = "description",
-            name = "\n\n\n\n",
-        },
-        spacer3 = {
-            order = 7,
-            type = "description",
-            name = "\n\n\n\n",
-        },
         headerCredits = {
             order = 11,
             type = "header",
-            name = "Credits",
+            name = addon.L["Credits"],
         },
-        creditsDescription = {
+        creditsDescription1 = {
             order = 12,
             type = "description",
-            name = "|cffF58CBADiuxtros|r @ Icecrown (US) - |cffFF8000Author|r",
+            name = addon.L["|cffF58CBADiuxtros|r @ Icecrown (US) - |cffFF8000Author|r"],
+            width = "full"
+        },
+        creditsDescription2 = {
+            order = 13,
+            type = "description",
+            name = addon.L["|cff3FC7EBMascascora|r @ 迦拉克隆 (CN) - |cffFF8000Chinese localization|r"],
+            width = "full"
         },
     },
 }
@@ -116,18 +115,19 @@ local defaults = {
         dataCleanupV1 = false,
         previousGroupSize = 0,
         blacklistPopupWindowOptions = {
-            "All",
-            "Bad player",
-            "Quitter",
-            "AFKer",
-            "Toxic",
-            "Scammer",
-            "Bigot",
-            "Other"
+            addon.L["All"],
+            addon.L["Bad player"],
+            addon.L["Quitter"],
+            addon.L["AFKer"],
+            addon.L["Toxic"],
+            addon.L["Scammer"],
+            addon.L["Bigot"],
+            addon.L["Other"]
         }
     },
     profile = {
         showPopup = true,
+        blacklistAnnouncement = true,
         minimap = {
             hide = false,
         },
@@ -264,12 +264,18 @@ function BlacklistWarden:CheckPlayersOnGroupUpdate()
             local fullname = name .. "-" .. realm;
             local classBase, classId = UnitClassBase(unitID)
             newMembers[fullname] = classId
-            --check only if someone joined
-            if groupCount > BlacklistWarden.db.global.previousGroupSize then
-                if BlacklistWarden:IsPlayerInList(fullname) and not acknowledgedBlacklistPlayers[fullname:lower()] then
+            -- Check only newly seen members. This also handles a member swap
+            -- where the group size does not change, and joining an existing group.
+            if not previousMembers[fullname] then
+                local blacklistedPlayer = BlacklistWarden.db.global.blacklistedPlayers[fullname:lower()]
+                if blacklistedPlayer and BlacklistWarden.db.profile.blacklistAnnouncement then
+                    SendChatMessage(addon.L["Detected blacklisted member "] .. fullname ..
+                        addon.L[", blacklist reason: "] ..
+                        (blacklistedPlayer.reason or addon.L["Not specified"]), "PARTY")
+                end
+                if blacklistedPlayer and not acknowledgedBlacklistPlayers[fullname:lower()] then
                     if blacklistPopupWarning then
-                        blacklistPopupWarning.setPlayerData(BlacklistWarden.db.global
-                            .blacklistedPlayers[fullname:lower()])
+                        blacklistPopupWarning.setPlayerData(blacklistedPlayer)
                         blacklistPopupWarning:Show()
                     end
                 end
@@ -281,10 +287,10 @@ function BlacklistWarden:CheckPlayersOnGroupUpdate()
         for entry in pairs(previousMembers) do
             if not newMembers[entry] and entry ~= playername then
                 -- Player has left the group
-                print("|cffFFFF00Blacklist Warden: |Hplayer:" ..
+                print("|cffFFFF00" .. addon.L["Blacklist Warden: "] .. "|Hplayer:" ..
                     entry ..
                     ":" ..
-                    previousMembers[entry] + 4000000000 .. "|h|cffd80000[" .. entry .. "]|r|h has left the group.")
+                    previousMembers[entry] + 4000000000 .. "|h|cffd80000[" .. entry .. addon.L["]|r|h has left the group."])
             end
         end
     end
@@ -301,8 +307,8 @@ end
 -- Slash commands
 function BlacklistWarden:SlashCommand(msg)
     if not msg or msg:trim() == "" then
-        print("|cffFFFF00/blw settings -|r Opens the settings window")
-        print("|cffFFFF00/blw list -|r Opens the list window")
+        print(addon.L["|cffFFFF00/blw settings -|r Opens the settings window"])
+        print(addon.L["|cffFFFF00/blw list -|r Opens the list window"])
     elseif string.lower(msg:trim()) == "settings" then
         Settings.OpenToCategory(BlacklistWarden.optionsId)
     elseif string.lower(msg:trim()) == "list" then
@@ -317,6 +323,14 @@ end
 
 function BlacklistWarden:SetShowPopup(info, value)
     BlacklistWarden.db.profile.showPopup = value;
+end
+
+function BlacklistWarden:GetBlacklistAnnouncement(info)
+    return BlacklistWarden.db.profile.blacklistAnnouncement;
+end
+
+function BlacklistWarden:SetBlacklistAnnouncement(info, value)
+    BlacklistWarden.db.profile.blacklistAnnouncement = value;
 end
 
 function BlacklistWarden:GetLeaverText(info)
@@ -391,13 +405,13 @@ function BlacklistWarden:WritePlayerToDisk()
         ["muted"]=playerInfo["muted"]
     }
     if not player then
-        print("|cffFF0000" .. playerNameString .. "|r added to blacklist.")
+        print("|cffFF0000" .. playerNameString .. "|r" .. addon.L[" added to blacklist."])
         if blacklistListWindow then
             blacklistListWindow.addEntry(BlacklistWarden.db.global.blacklistedPlayers
                 [playerName])
         end
     else
-        print("|cffFF0000" .. playerNameString .. "|r successfully modified.")
+        print("|cffFF0000" .. playerNameString .. "|r" .. addon.L[" successfully modified."])
         if blacklistListWindow then
             blacklistListWindow.updateEntry(BlacklistWarden.db.global.blacklistedPlayers
                 [playerName])
@@ -411,7 +425,7 @@ end
 function BlacklistWarden:BlacklistButton()
     if BlacklistWarden.db.profile.showPopup then
         if blacklistPopupWindow then
-            blacklistPopupWindow.title:SetText("ADD TO BLACKLIST")
+            blacklistPopupWindow.title:SetText(addon.L["ADD TO BLACKLIST"])
             blacklistPopupWindow.setPlayerName({
                 ["name"] = playerInfo["playerName"],
                 ["server"] = playerInfo
@@ -445,7 +459,7 @@ function BlacklistWarden:EditEntry(playername)
         ["reason"] = player["reason"]
     }
     blacklistPopupWindow.setPlayerName(player)
-    blacklistPopupWindow.title:SetText("EDIT")
+    blacklistPopupWindow.title:SetText(addon.L["EDIT"])
     for i = 1, #BlacklistWarden.db.global.blacklistPopupWindowOptions do
         if BlacklistWarden.db.global.blacklistPopupWindowOptions[i] == player["reason"] then
             blacklistPopupWindow.dropdown:SetValue(i)
@@ -475,7 +489,7 @@ function BlacklistWarden:RemovePlayer(name)
         blacklistListWindow.removeEntry(player)
     end
     BlacklistWarden.db.global.blacklistedPlayers[name] = nil;
-    print("|cFF00FF00" .. displayName .. "|r removed from blacklist.")
+    print("|cFF00FF00" .. displayName .. "|r" .. addon.L[" removed from blacklist."])
 end
 
 --check if player is on blacklist
@@ -492,10 +506,10 @@ do
     --Add info on tooltip for blacklisted players
     local function AddToTooltip(tooltip, player)
         tooltip:AddLine(" ")
-        tooltip:AddLine("|cffFFC000Blacklist Warden - |rBlacklisted", 1, 0, 0, false)
-        tooltip:AddLine("|cffFFC000Reason: |r" .. player.reason .. "|r", 1, 1, 1, false)
+        tooltip:AddLine("|cffFFC000" .. addon.L["Blacklist Warden - |rBlacklisted"], 1, 0, 0, false)
+        tooltip:AddLine("|cffFFC000" .. addon.L["Reason: |r"] .. player.reason .. "|r", 1, 1, 1, false)
         if player.notes and player.notes ~= "" then
-            tooltip:AddLine("|cffFFC000Note: |r" .. player.notes, 1, 1, 1, true)
+            tooltip:AddLine("|cffFFC000" .. addon.L["Note: |r"] .. player.notes, 1, 1, 1, true)
         end
         tooltip:AddLine(" ")
     end
@@ -654,9 +668,9 @@ do
         if fullName == playername .. "-" .. GetRealmName() then return end
 
         if not isOnList then
-            popupText = "|cffd80000Blacklist player|r"
+            popupText = "|cffd80000" .. addon.L["Blacklist player|r"]
         else
-            popupText = "|cFF00FF00Remove from blacklist|r"
+            popupText = "|cFF00FF00" .. addon.L["Remove from blacklist|r"]
         end
 
         rootDescription:CreateDivider();

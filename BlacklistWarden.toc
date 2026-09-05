@@ -11,7 +11,7 @@
 ## IconTexture: Interface\Icons\Spell_Mage_Evanesce
 embeds.xml
 
-
+local.lua
 Core.lua
 Widgets.lua
 
