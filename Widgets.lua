@@ -954,11 +954,17 @@ function BlacklistWarden:CreateListFrame()
         if nameBox:GetText() == "" or realmBox:GetText() == "" then
             print("|cffFFFF00Blacklist Warden:|r Name or realm missing.")
         else
-            local nameBoxString = nameBox:GetText():lower()
-            nameBoxString = nameBoxString:sub(1, 1):upper() .. nameBoxString:sub(2)
+            local nameBoxString = nameBox:GetText()
+            if not nameBoxString:find("[^%z\1-\127]") then
+                nameBoxString = nameBoxString:lower()
+                nameBoxString = nameBoxString:sub(1, 1):upper() .. nameBoxString:sub(2)
+            end
 
-            local realmBoxString = realmBox:GetText():lower()
-            realmBoxString = realmBoxString:sub(1, 1):upper() .. realmBoxString:sub(2)
+            local realmBoxString = realmBox:GetText()
+            if not realmBoxString:find("[^%z\1-\127]") then
+                realmBoxString = realmBoxString:lower()
+                realmBoxString = realmBoxString:sub(1, 1):upper() .. realmBoxString:sub(2)
+            end
 
             BlacklistWarden:SavePlayerInfoValue("playerName", nameBoxString:match("^%s*(.-)%s*$"))
             BlacklistWarden:SavePlayerInfoValue("playerServer", realmBoxString:match("^%s*(.-)%s*$"))
