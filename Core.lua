@@ -103,7 +103,7 @@ local options = {
         creditsDescription2 = {
             order = 13,
             type = "description",
-            name = addon.L["|cff3FC7EBMascascora|r @ 迦拉克隆 (CN) - |cffFF8000Chinese localization|r"],
+            name = addon.L["|cff3FC7EBMascascora|r @ Galakrond (CN) - |cffFF8000Chinese localization|r"],
             width = "full"
         },
     },
@@ -127,7 +127,7 @@ local defaults = {
     },
     profile = {
         showPopup = true,
-        blacklistAnnouncement = true,
+        blacklistAnnouncement = false,
         minimap = {
             hide = false,
         },
