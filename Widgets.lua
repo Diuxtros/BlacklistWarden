@@ -1,4 +1,5 @@
 --File that handles the frames
+local ADDON_NAME, addon = ...
 
 -- lib
 local AceGUI = LibStub("AceGUI-3.0")
@@ -22,19 +23,19 @@ local classColor = {
 
 -- class names to display
 local className = {
-    ["WARRIOR"] = "Warrior",
-    ["PALADIN"] = "Paladin",
-    ["HUNTER"] = "Hunter",
-    ["ROGUE"] = "Rogue",
-    ["PRIEST"] = "Priest",
-    ["SHAMAN"] = "Shaman",
-    ["MAGE"] = "Mage",
-    ["WARLOCK"] = "Warlock",
-    ["MONK"] = "Monk",
-    ["DRUID"] = "Druid",
-    ["DEMONHUNTER"] = "Demon Hunter",
-    ["DEATHKNIGHT"] = "Death Knight",
-    ["EVOKER"] = "Evoker",
+    ["WARRIOR"] = addon.L["Warrior"],
+    ["PALADIN"] = addon.L["Paladin"],
+    ["HUNTER"] = addon.L["Hunter"],
+    ["ROGUE"] = addon.L["Rogue"],
+    ["PRIEST"] = addon.L["Priest"],
+    ["SHAMAN"] = addon.L["Shaman"],
+    ["MAGE"] = addon.L["Mage"],
+    ["WARLOCK"] = addon.L["Warlock"],
+    ["MONK"] = addon.L["Monk"],
+    ["DRUID"] = addon.L["Druid"],
+    ["DEMONHUNTER"] = addon.L["Demon Hunter"],
+    ["DEATHKNIGHT"] = addon.L["Death Knight"],
+    ["EVOKER"] = addon.L["Evoker"],
 }
 
 -- Safely turns a saved player's class field into a valid classColor/className
@@ -589,14 +590,14 @@ function BlacklistWarden:CreateBlacklistWarningWindow()
     BlacklistWarden:HandleFrameConfig(container, frameConfig)
 
 
-    local savebutton = BlacklistWarden:CreateStandardButton("Leave", 100, container)
+    local savebutton = BlacklistWarden:CreateStandardButton(addon.L["Leave"], 100, container)
     savebutton:SetCallback("OnClick", function(this)
         C_PartyInfo.LeaveParty()
         this.frame:GetParent():Hide()
     end)
     savebutton.frame:SetPoint("BOTTOM", container, "BOTTOM", -60, 10)
 
-    local cancelbutton = BlacklistWarden:CreateStandardButton("Stay", 100, container)
+    local cancelbutton = BlacklistWarden:CreateStandardButton(addon.L["Stay"], 100, container)
     cancelbutton:SetCallback("OnClick", function(this)
         local parent = this.frame:GetParent()
         BlacklistWarden:AcknowledgeBlacklistedPlayer(parent.currentPlayerKey)
@@ -607,7 +608,7 @@ function BlacklistWarden:CreateBlacklistWarningWindow()
     local title = container:CreateFontString(nil, "OVERLAY", "GameFontNormalLarge")
     title:SetPoint("CENTER", container, "TOP", 0, -20)
     title:SetTextColor(unpack(Colors.accent))
-    title:SetText("BLACKLISTED PLAYER")
+    title:SetText(addon.L["BLACKLISTED PLAYER"])
 
     local titleUnderline = container:CreateTexture(nil, "ARTWORK")
     titleUnderline:SetColorTexture(unpack(Colors.accentDim))
@@ -641,14 +642,14 @@ function BlacklistWarden:CreateBlacklistWarningWindow()
         container.currentPlayerKey = (player["name"] .. "-" .. player["server"]):lower()
 
         local class = BlacklistWarden:NormalizeClass(player)
-        name:SetText("Name: |cff" ..
+        name:SetText(addon.L["Name: "] .. "|cff" ..
             RGBToHex(classColor[class][1] * 255, classColor[class][2] * 255, classColor[class][3] * 255) ..
             player["name"] .. "-" .. player["server"])
 
 
         --name:SetTextColor(classColor[class][1], classColor[class][2], classColor[class][3], 1);
-        reason:SetText("Reason: |cffe8615f" .. player["reason"])
-        notes:SetText("Notes: \n|cffd9d9f0" .. player["notes"])
+        reason:SetText(addon.L["Reason: "] .. "|cffe8615f" .. player["reason"])
+        notes:SetText(addon.L["Notes: \n"] .. "|cffd9d9f0" .. player["notes"])
     end
     container.setPlayerData = SetPlayerData
     container:Hide()
@@ -682,7 +683,7 @@ function BlacklistWarden:CreateBlacklistPopupWindow()
     BlacklistWarden:HandleFrameConfig(container, frameConfig)
 
 
-    local savebutton = BlacklistWarden:CreateStandardButton("Save", 100, container)
+    local savebutton = BlacklistWarden:CreateStandardButton(addon.L["Save"], 100, container)
     savebutton.frame:SetPoint("BOTTOM", container, "BOTTOM", -60, 15)
     savebutton:SetCallback("OnClick",
         function(this)
@@ -692,7 +693,7 @@ function BlacklistWarden:CreateBlacklistPopupWindow()
             this.frame:GetParent():Hide()
         end)
 
-    local cancelbutton = BlacklistWarden:CreateStandardButton("Cancel", 100, container)
+    local cancelbutton = BlacklistWarden:CreateStandardButton(addon.L["Cancel"], 100, container)
     cancelbutton.frame:SetPoint("BOTTOM", container, "BOTTOM", 60, 15)
     cancelbutton:SetCallback("OnClick", function(this) this.frame:GetParent():Hide(); end)
 
@@ -725,7 +726,7 @@ function BlacklistWarden:CreateBlacklistPopupWindow()
     drop:SetList(BlacklistWarden.db.global.blacklistPopupWindowOptions)
     drop:SetWidth(157)
     drop:SetValue(1)
-    drop:SetLabel("Reason:")
+    drop:SetLabel(addon.L["Reason:"])
     drop:SetCallback("OnValueChanged", function(this, event, item)
         BlacklistWarden:SavePlayerInfoValue("reason",
             BlacklistWarden.db.global.blacklistPopupWindowOptions[item])
@@ -740,7 +741,7 @@ function BlacklistWarden:CreateBlacklistPopupWindow()
     local muteLabel = container:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
     muteLabel:SetPoint("LEFT", drop.frame, "RIGHT", 20, 10)
     muteLabel:SetTextColor(unpack(Colors.textDim))
-    muteLabel:SetText("Mute?")
+    muteLabel:SetText(addon.L["Mute?"])
 
     local checkbox = {}
     checkbox = AceGUI:Create("CheckBox")
@@ -755,7 +756,7 @@ function BlacklistWarden:CreateBlacklistPopupWindow()
     local noteLabel = container:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
     noteLabel:SetPoint("LEFT", drop.frame, "LEFT", 0, -30)
     noteLabel:SetTextColor(unpack(Colors.textDim))
-    noteLabel:SetText("Note (optional):")
+    noteLabel:SetText(addon.L["Note (optional):"])
 
     -- Modern flat inset for the note editbox instead of the old tooltip-style border
     local editBoxContainer = CreateFrame("Frame", nil, container, BackdropTemplateMixin and "BackdropTemplate")
@@ -805,14 +806,14 @@ function BlacklistWarden:CreateListFrame()
     columnCount   = 0
     local heading = {}
     heading       = AceGUI:Create("Heading")
-    heading:SetText("Blacklist Warden")
+    heading:SetText(addon.L["Blacklist Warden"])
     heading:SetWidth(container:GetWidth() - 5)
     heading.frame:SetParent(container)
     heading.frame:SetPoint("TOP", container, "TOP", 0, -20)
     heading.frame:Show()
     BlacklistWarden:SkinFlatHeading(heading)
 
-    local closebutton = BlacklistWarden:CreateStandardButton("Close", 80, container)
+    local closebutton = BlacklistWarden:CreateStandardButton(addon.L["Close"], 80, container)
     closebutton.frame:SetPoint("BOTTOMRIGHT", container, "BOTTOMRIGHT", -6, 10)
     closebutton:SetHeight(20)
     closebutton:SetCallback("OnClick",
@@ -821,7 +822,7 @@ function BlacklistWarden:CreateListFrame()
         end)
 
     local tabgroup = AceGUI:Create("TabGroup")
-    tabgroup:SetTabs { { value = "1", text = "Player List" }, { value = "2", text = "Add player" } }
+    tabgroup:SetTabs { { value = "1", text = addon.L["Player List"] }, { value = "2", text = addon.L["Add player"] } }
     tabgroup.frame:SetParent(container)
     tabgroup.frame:SetPoint("TOPLEFT", container, "TOPLEFT", 5, -30)
     tabgroup.frame:SetPoint("BOTTOMRIGHT", container, "BOTTOMRIGHT", -5, 30)
@@ -842,13 +843,13 @@ function BlacklistWarden:CreateListFrame()
     scrollChild:SetWidth(scrollFrame:GetWidth())
     scrollChild:SetHeight(1)
 
-    BlacklistWarden:CreateColumnHeader("Name", scrollFrame, 110, "scroll", scrollChild)
-    BlacklistWarden:CreateColumnHeader("Realm", scrollFrame, 105, "scroll", scrollChild)
-    BlacklistWarden:CreateColumnHeader("Class", scrollFrame, 110, "scroll", scrollChild)
-    BlacklistWarden:CreateColumnHeader("Reason", scrollFrame, 80, "scroll", scrollChild)
-    BlacklistWarden:CreateColumnHeader("Date Added", scrollFrame, 90, "scroll", scrollChild)
-    BlacklistWarden:CreateColumnHeader("Muted?", scrollFrame, 65, "scroll", scrollChild)
-    BlacklistWarden:CreateColumnHeader("Notes", scrollFrame, 278, "scroll", scrollChild)
+    BlacklistWarden:CreateColumnHeader(addon.L["Name"], scrollFrame, 110, "scroll", scrollChild)
+    BlacklistWarden:CreateColumnHeader(addon.L["Realm"], scrollFrame, 105, "scroll", scrollChild)
+    BlacklistWarden:CreateColumnHeader(addon.L["Class"], scrollFrame, 110, "scroll", scrollChild)
+    BlacklistWarden:CreateColumnHeader(addon.L["Reason"], scrollFrame, 80, "scroll", scrollChild)
+    BlacklistWarden:CreateColumnHeader(addon.L["Date Added"], scrollFrame, 90, "scroll", scrollChild)
+    BlacklistWarden:CreateColumnHeader(addon.L["Muted?"], scrollFrame, 65, "scroll", scrollChild)
+    BlacklistWarden:CreateColumnHeader(addon.L["Notes"], scrollFrame, 278, "scroll", scrollChild)
 
     --BlacklistWarden:CreateTableButton(scrollcontainer.frame,1);
 
@@ -856,13 +857,13 @@ function BlacklistWarden:CreateListFrame()
     addFrame.frame:SetParent(tabgroup.frame)
     addFrame.frame:SetPoint("TOPLEFT", tabgroup.frame, "TOPLEFT", 20, -50)
     addFrame.frame:SetPoint("BOTTOMRIGHT", tabgroup.frame, "BOTTOMRIGHT", -10, 60)
-    addFrame:SetTitle("ADD TO BLACKLIST: ")
+    addFrame:SetTitle(addon.L["ADD TO BLACKLIST: "])
     BlacklistWarden:SkinFlatTabGroupBorder(addFrame)
     --BlacklistWarden:SkinFlatContainerBorder(addFrame)
 
 
     local nameBox = AceGUI:Create("EditBox")
-    nameBox:SetLabel("Name:")
+    nameBox:SetLabel(addon.L["Name:"])
     nameBox:SetWidth(200)
     nameBox.frame:SetParent(addFrame.frame)
     nameBox:DisableButton(true)
@@ -881,7 +882,7 @@ function BlacklistWarden:CreateListFrame()
     end
 
     local realmBox = AceGUI:Create("EditBox")
-    realmBox:SetLabel("Realm:")
+    realmBox:SetLabel(addon.L["Realm:"])
     realmBox:SetWidth(200)
     realmBox:DisableButton(true)
     realmBox.frame:SetParent(addFrame.frame)
@@ -894,7 +895,7 @@ function BlacklistWarden:CreateListFrame()
     classDropdown:SetList(className)
     classDropdown:SetWidth(193)
     classDropdown:SetValue("DEATHKNIGHT")
-    classDropdown:SetLabel("Class:")
+    classDropdown:SetLabel(addon.L["Class:"])
 
     classDropdown.frame:SetParent(addFrame.frame)
     classDropdown.frame:Show()
@@ -911,7 +912,7 @@ function BlacklistWarden:CreateListFrame()
     reasonDropdown:SetList(BlacklistWarden.db.global.blacklistPopupWindowOptions)
     reasonDropdown:SetWidth(193)
     reasonDropdown:SetValue(1)
-    reasonDropdown:SetLabel("Reason:")
+    reasonDropdown:SetLabel(addon.L["Reason:"])
     reasonDropdown:SetCallback("OnValueChanged", function(this, event, item)
         BlacklistWarden:SavePlayerInfoValue("reason",
             BlacklistWarden.db.global.blacklistPopupWindowOptions[item])
@@ -923,7 +924,7 @@ function BlacklistWarden:CreateListFrame()
     reasonDropdown.frame:SetPoint("LEFT", classDropdown.frame, "RIGHT", 21, 0)
 
     local notesBox = AceGUI:Create("MultiLineEditBox")
-    notesBox:SetLabel("Note (optional):")
+    notesBox:SetLabel(addon.L["Note (optional):"])
     notesBox:SetWidth(425)
     notesBox:DisableButton(true)
     notesBox.frame:SetParent(addFrame.frame)
@@ -937,7 +938,7 @@ function BlacklistWarden:CreateListFrame()
     local muteLabel = notesBox.frame:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
     muteLabel:SetPoint("BOTTOMLEFT", notesBox.frame, "BOTTOMLEFT", 0, -15)
     muteLabel:SetTextColor(unpack(Colors.textDim))
-    muteLabel:SetText("Mute?")
+    muteLabel:SetText(addon.L["Mute?"])
 
     local checkbox = {}
     checkbox = AceGUI:Create("CheckBox")
@@ -952,13 +953,19 @@ function BlacklistWarden:CreateListFrame()
 
     local function AddPlayer()
         if nameBox:GetText() == "" or realmBox:GetText() == "" then
-            print("|cffFFFF00Blacklist Warden:|r Name or realm missing.")
+            print(addon.L["|cffFFFF00Blacklist Warden:|r Name or realm missing."])
         else
-            local nameBoxString = nameBox:GetText():lower()
-            nameBoxString = nameBoxString:sub(1, 1):upper() .. nameBoxString:sub(2)
+            local nameBoxString = nameBox:GetText()
+            if not nameBoxString:find("[^%z\1-\127]") then
+                nameBoxString = nameBoxString:lower()
+                nameBoxString = nameBoxString:sub(1, 1):upper() .. nameBoxString:sub(2)
+            end
 
-            local realmBoxString = realmBox:GetText():lower()
-            realmBoxString = realmBoxString:sub(1, 1):upper() .. realmBoxString:sub(2)
+            local realmBoxString = realmBox:GetText()
+            if not realmBoxString:find("[^%z\1-\127]") then
+                realmBoxString = realmBoxString:lower()
+                realmBoxString = realmBoxString:sub(1, 1):upper() .. realmBoxString:sub(2)
+            end
 
             BlacklistWarden:SavePlayerInfoValue("playerName", nameBoxString:match("^%s*(.-)%s*$"))
             BlacklistWarden:SavePlayerInfoValue("playerServer", realmBoxString:match("^%s*(.-)%s*$"))
@@ -977,7 +984,7 @@ function BlacklistWarden:CreateListFrame()
         end
     end
 
-    local addButton = BlacklistWarden:CreateStandardButton("Add", 100, addFrame.frame)
+    local addButton = BlacklistWarden:CreateStandardButton(addon.L["Add"], 100, addFrame.frame)
     addButton.frame:SetPoint("BOTTOMLEFT", addFrame.frame, "BOTTOMLEFT", 15, 30)
     addButton:SetCallback("OnClick", function() AddPlayer(); end)
 
@@ -1038,7 +1045,7 @@ function BlacklistWarden:CreateListFrame()
                 else
                     FilteredScrollButtons[i].notes:SetText(" ")
                 end
-                FilteredScrollButtons[i].muted:SetText(player["muted"] and "Yes" or "No")
+                FilteredScrollButtons[i].muted:SetText(player["muted"] and addon.L["Yes"] or addon.L["No"])
                 if player["muted"] == true then
                     FilteredScrollButtons[i].muted:SetTextColor(unpack(Colors.success))
                 else
@@ -1319,10 +1326,10 @@ function BlacklistWarden:CreateTableButton(parent, index, player)
     FilteredScrollButtons[index].muted:SetJustifyH("LEFT")
     FilteredScrollButtons[index].muted:SetMaxLines(1)
     if player["muted"] == true then
-        FilteredScrollButtons[index].muted:SetText("Yes")
+        FilteredScrollButtons[index].muted:SetText(addon.L["Yes"])
         FilteredScrollButtons[index].muted:SetTextColor(unpack(Colors.success))
     else
-        FilteredScrollButtons[index].muted:SetText("No")
+        FilteredScrollButtons[index].muted:SetText(addon.L["No"])
         FilteredScrollButtons[index].muted:SetTextColor(unpack(Colors.textDim))
     end
 
@@ -1349,8 +1356,8 @@ end
 function BlacklistWarden:CreateDropdown(self)
     local playerKey = self.playerKey
     MenuUtil.CreateContextMenu(UIParent, function(ownerRegion, rootDescription)
-        rootDescription:CreateTitle("Select option")
-        rootDescription:CreateButton("Edit", function() BlacklistWarden:EditEntry(playerKey) end)
-        rootDescription:CreateButton("Remove", function() BlacklistWarden:RemovePlayer(playerKey) end)
+        rootDescription:CreateTitle(addon.L["Select option"])
+        rootDescription:CreateButton(addon.L["Edit"], function() BlacklistWarden:EditEntry(playerKey) end)
+        rootDescription:CreateButton(addon.L["Remove"], function() BlacklistWarden:RemovePlayer(playerKey) end)
     end)
 end
