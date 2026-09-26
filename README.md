@@ -11,6 +11,7 @@
 - **Chat Ignore**: Mute players in your blacklist to never see their messages.
 - **Tooltips**: See information about blacklisted players in their tooltips.
 - **Customization**: Freely move all of the addon's windows, toggle extra popups, and more.
+- **Localization**: Currently English and Chinese.
     
 ## Installation
 
@@ -41,11 +42,6 @@
 ![blw3](https://github.com/user-attachments/assets/5d9d3f80-047f-4d58-a413-25621975e8d0)
 
 ![blw4](https://github.com/user-attachments/assets/c6a285fc-bac9-408c-a4fe-4eaa0fa78eeb)
-
-## To-Do
-
-- Localization
-- Search feature
 
 ## Contact
 
