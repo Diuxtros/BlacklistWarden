@@ -1,4 +1,4 @@
-## Interface: 120007, 120100
+## Interface: 120007, 120100, 120105, 16001
 ## Title: Blacklist Warden
 ## Notes: Blacklist players and get notified when they are in your groups.
 ## Author: Diuxtros

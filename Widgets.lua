@@ -592,7 +592,11 @@ function BlacklistWarden:CreateBlacklistWarningWindow()
 
     local savebutton = BlacklistWarden:CreateStandardButton(addon.L["Leave"], 100, container)
     savebutton:SetCallback("OnClick", function(this)
-        C_PartyInfo.LeaveParty()
+        if C_PartyInfo and C_PartyInfo.LeaveParty then
+            C_PartyInfo.LeaveParty()
+        elseif LeaveParty then
+            LeaveParty()
+        end
         this.frame:GetParent():Hide()
     end)
     savebutton.frame:SetPoint("BOTTOM", container, "BOTTOM", -60, 10)
@@ -639,12 +643,12 @@ function BlacklistWarden:CreateBlacklistWarningWindow()
         return string.format("%02x%02x%02x", r, g, b)
     end
     local function SetPlayerData(player)
-        container.currentPlayerKey = (player["name"] .. "-" .. player["server"]):lower()
+        container.currentPlayerKey = BlacklistWarden:PlayerKey(player)
 
         local class = BlacklistWarden:NormalizeClass(player)
         name:SetText(addon.L["Name: "] .. "|cff" ..
             RGBToHex(classColor[class][1] * 255, classColor[class][2] * 255, classColor[class][3] * 255) ..
-            player["name"] .. "-" .. player["server"])
+            BlacklistWarden:PlayerDisplayName(player))
 
 
         --name:SetTextColor(classColor[class][1], classColor[class][2], classColor[class][3], 1);
@@ -714,7 +718,7 @@ function BlacklistWarden:CreateBlacklistPopupWindow()
     playerName:SetMaxLines(1)
     playerName:SetWidth(200)
     local function SetPlayerName(player)
-        playerName:SetText(player["name"] .. "-" .. player["server"])
+        playerName:SetText(BlacklistWarden:PlayerDisplayName(player))
         local class = BlacklistWarden:NormalizeClass(player)
 
         playerName:SetTextColor(classColor[class][1], classColor[class][2], classColor[class][3], 1);
@@ -844,7 +848,7 @@ function BlacklistWarden:CreateListFrame()
     scrollChild:SetHeight(1)
 
     BlacklistWarden:CreateColumnHeader(addon.L["Name"], scrollFrame, 110, "scroll", scrollChild)
-    BlacklistWarden:CreateColumnHeader(addon.L["Realm"], scrollFrame, 105, "scroll", scrollChild)
+    BlacklistWarden:CreateColumnHeader(addon.isForever and addon.L["Surname"] or addon.L["Realm"], scrollFrame, 105, "scroll", scrollChild)
     BlacklistWarden:CreateColumnHeader(addon.L["Class"], scrollFrame, 110, "scroll", scrollChild)
     BlacklistWarden:CreateColumnHeader(addon.L["Reason"], scrollFrame, 80, "scroll", scrollChild)
     BlacklistWarden:CreateColumnHeader(addon.L["Date Added"], scrollFrame, 90, "scroll", scrollChild)
@@ -882,7 +886,7 @@ function BlacklistWarden:CreateListFrame()
     end
 
     local realmBox = AceGUI:Create("EditBox")
-    realmBox:SetLabel(addon.L["Realm:"])
+    realmBox:SetLabel(addon.isForever and addon.L["Surname (optional):"] or addon.L["Realm:"])
     realmBox:SetWidth(200)
     realmBox:DisableButton(true)
     realmBox.frame:SetParent(addFrame.frame)
@@ -951,21 +955,35 @@ function BlacklistWarden:CreateListFrame()
     BlacklistWarden:SkinFlatCheckbox(checkbox, 20)
     container.checkbox = checkbox
 
-    local function AddPlayer()
-        if nameBox:GetText() == "" or realmBox:GetText() == "" then
-            print(addon.L["|cffFFFF00Blacklist Warden:|r Name or realm missing."])
-        else
-            local nameBoxString = nameBox:GetText()
-            if not nameBoxString:find("[^%z\1-\127]") then
-                nameBoxString = nameBoxString:lower()
-                nameBoxString = nameBoxString:sub(1, 1):upper() .. nameBoxString:sub(2)
-            end
+    -- Capitalizes ASCII names ("aRTHAS" -> "Arthas"); leaves non-Latin names as typed
+    local function Capitalize(text)
+        text = text:match("^%s*(.-)%s*$")
+        if text ~= "" and not text:find("[^%z\1-\127]") then
+            text = text:lower()
+            text = text:sub(1, 1):upper() .. text:sub(2)
+        end
+        return text
+    end
 
-            local realmBoxString = realmBox:GetText()
-            if not realmBoxString:find("[^%z\1-\127]") then
-                realmBoxString = realmBoxString:lower()
-                realmBoxString = realmBoxString:sub(1, 1):upper() .. realmBoxString:sub(2)
+    local function AddPlayer()
+        local nameText = nameBox:GetText():match("^%s*(.-)%s*$")
+        local realmText = realmBox:GetText():match("^%s*(.-)%s*$")
+        if addon.isForever then
+            -- Surname is optional; also accept "First Surname" typed into the name box
+            if nameText ~= "" and realmText == "" then
+                nameText, realmText = BlacklistWarden:FormatName(nameText)
+                realmText = realmText or ""
             end
+        end
+        if nameText == "" or (not addon.isForever and realmText == "") then
+            if addon.isForever then
+                print(addon.L["|cffFFFF00Blacklist Warden:|r Name missing."])
+            else
+                print(addon.L["|cffFFFF00Blacklist Warden:|r Name or realm missing."])
+            end
+        else
+            local nameBoxString = Capitalize(nameText)
+            local realmBoxString = Capitalize(realmText)
 
             BlacklistWarden:SavePlayerInfoValue("playerName", nameBoxString:match("^%s*(.-)%s*$"))
             BlacklistWarden:SavePlayerInfoValue("playerServer", realmBoxString:match("^%s*(.-)%s*$"))
@@ -1023,7 +1041,7 @@ function BlacklistWarden:CreateListFrame()
         index = index + 1
     end
     local function RemoveEntry(player)
-        local removeKey = (player["name"] .. "-" .. player["server"]):lower()
+        local removeKey = BlacklistWarden:PlayerKey(player)
         for i = 1, #FilteredScrollButtons do
             if FilteredScrollButtons[i].playerKey == removeKey then
                 FilteredScrollButtons[i]:Hide()
@@ -1036,7 +1054,7 @@ function BlacklistWarden:CreateListFrame()
         end
     end
     local function UpdateEntry(player)
-        local updateKey = (player["name"] .. "-" .. player["server"]):lower()
+        local updateKey = BlacklistWarden:PlayerKey(player)
         for i = 1, #FilteredScrollButtons do
             if FilteredScrollButtons[i].playerKey == updateKey then
                 FilteredScrollButtons[i].reason:SetText(player["reason"])
@@ -1080,7 +1098,17 @@ function BlacklistWarden:CreateColumnHeader(text, parent, width, name, child)
 
     columnCount = columnCount + 1
 
-    local Header = CreateFrame("Button", name .. "Header" .. columnCount, parent, "WhoFrameColumnHeaderTemplate")
+    -- WhoFrameColumnHeaderTemplate may not exist on every client; fall back to a plain button
+    local headerFrameName = name .. "Header" .. columnCount
+    local ok, Header = pcall(CreateFrame, "Button", headerFrameName, parent, "WhoFrameColumnHeaderTemplate")
+    if not ok or not Header then
+        Header = CreateFrame("Button", headerFrameName, parent)
+    end
+    if not Header:GetFontString() then
+        local fs = Header:CreateFontString(nil, "OVERLAY", "GameFontHighlight")
+        fs:SetPoint("LEFT", Header, "LEFT", 8, 0)
+        Header:SetFontString(fs)
+    end
     Header:SetWidth(width)
     Header:SetHeight(22)
 
@@ -1239,9 +1267,24 @@ function BlacklistWarden:SortPlayerBlacklist(sortBy, parent)
     end
 end
 
+-- Creates a list row. IgnoreListButtonTemplate is a retail template that may be missing or
+-- different on WoW Forever, so fall back to a plain button.
+local function CreateRowButton(parent)
+    local ok, button = pcall(CreateFrame, "Button", nil, parent, "IgnoreListButtonTemplate")
+    if not ok or not button then
+        button = CreateFrame("Button", nil, parent)
+    end
+    if not button.name then
+        button.name = button:CreateFontString(nil, "OVERLAY", "GameFontNormal")
+        button.name:SetPoint("LEFT", button, "LEFT", 4, 0)
+        button.name:SetJustifyH("LEFT")
+    end
+    return button
+end
+
 --Creates table entries
 function BlacklistWarden:CreateTableButton(parent, index, player)
-    FilteredScrollButtons[index] = CreateFrame("Button", nil, parent, "IgnoreListButtonTemplate")
+    FilteredScrollButtons[index] = CreateRowButton(parent)
     if index == 1 then
         FilteredScrollButtons[index]:SetPoint("TOPLEFT", parent, -1, 0)
     else
@@ -1251,7 +1294,7 @@ function BlacklistWarden:CreateTableButton(parent, index, player)
     FilteredScrollButtons[index]:SetSize(840, 20)
     FilteredScrollButtons[index]:RegisterForClicks("RightButtonDown")
 
-    FilteredScrollButtons[index].playerKey = (player["name"] .. "-" .. player["server"]):lower()
+    FilteredScrollButtons[index].playerKey = BlacklistWarden:PlayerKey(player)
 
     local rowStripe = FilteredScrollButtons[index]:CreateTexture(nil, "BACKGROUND")
     rowStripe:SetAllPoints()
@@ -1355,6 +1398,11 @@ end
 --Creates context menu for player list
 function BlacklistWarden:CreateDropdown(self)
     local playerKey = self.playerKey
+    if not (MenuUtil and MenuUtil.CreateContextMenu) then
+        -- No modern menu system on this client: go straight to editing
+        BlacklistWarden:EditEntry(playerKey)
+        return
+    end
     MenuUtil.CreateContextMenu(UIParent, function(ownerRegion, rootDescription)
         rootDescription:CreateTitle(addon.L["Select option"])
         rootDescription:CreateButton(addon.L["Edit"], function() BlacklistWarden:EditEntry(playerKey) end)

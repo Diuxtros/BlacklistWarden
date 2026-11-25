@@ -20,7 +20,13 @@
 3. **Place in Addons Folder**: Move the extracted folder to your World of Warcraft addons directory. For example:
    - **Windows**: `C:\Program Files (x86)\World of Warcraft\_retail_\Interface\AddOns\`
    - **Mac**: `/Applications/World of Warcraft/_retail_/Interface/AddOns/`
+   - For WoW Forever, use the `_forever_` folder instead of `_retail_`.
 4. **Enable the addon**: Launch World of Warcraft and enable Blacklist Warden from the Addons menu at the character selection screen.
+
+## Supported game versions
+
+- Retail (Midnight)
+- WoW Forever (no realms: players are tracked by first name and optional surname, e.g. "Arthas Menethil")
 
 ## Usage
 

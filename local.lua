@@ -1,5 +1,14 @@
 local ADDON_NAME, addon = ...
 
+-- WoW Forever has no realms: characters have a first name and an optional surname instead.
+-- Detect it by project ID when the client defines one, otherwise by its 16xxx interface number.
+do
+    local tocVersion = select(4, GetBuildInfo())
+    local byProject = WOW_PROJECT_ID ~= nil and WOW_PROJECT_FOREVER ~= nil and WOW_PROJECT_ID == WOW_PROJECT_FOREVER
+    local byToc = type(tocVersion) == "number" and tocVersion >= 16000 and tocVersion < 17000
+    addon.isForever = byProject or byToc
+end
+
 local locale = GetLocale()
 local isChinese = locale == "zhCN" or locale == "zhTW"
 
@@ -84,6 +93,9 @@ local translations = {
     ["Notes"] = "备注",
     ["ADD TO BLACKLIST: "] = "加入黑名单：",
     ["Realm:"] = "服务器：",
+    ["Surname"] = "姓氏",
+    ["Surname (optional):"] = "姓氏（可选）：",
+    ["|cffFFFF00Blacklist Warden:|r Name missing."] = "|cffFFFF00黑名单守望者：|r 缺少姓名。",
     ["Class:"] = "职业：",
     ["Add"] = "添加",
     ["Yes"] = "是",

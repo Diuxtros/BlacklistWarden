@@ -25,9 +25,9 @@ local LDB = LibStub("LibDataBroker-1.1"):NewDataObject(addon.addonName, {
     end,
     OnClick = function(frame, button)
         if button == "RightButton" then
-            Settings.OpenToCategory(BlacklistWarden.optionsId)
+            BlacklistWarden:OpenSettings()
         elseif button == "LeftButton" then
-            if blacklistListWindow then blacklistListWindow:Show() end
+            BlacklistWarden:ShowListWindow()
         end
     end,
 })
@@ -215,18 +215,64 @@ function BlacklistWarden:ConverTableToLower()
    -- end
 end
 
+-- On Forever, re-key every saved entry with the name+surname key format. This also fixes
+-- entries saved by older versions that used an empty realm. Safe to run on every load.
+function BlacklistWarden:RekeyForForever()
+    if not addon.isForever then return end
+    local players = BlacklistWarden.db.global.blacklistedPlayers
+    local rekeyed = {}
+    for key, player in pairs(players) do
+        if type(player) == "table" and player.name then
+            player.server = player.server or ""
+            rekeyed[BlacklistWarden:PlayerKey(player)] = player
+        else
+            rekeyed[key] = player
+        end
+    end
+    for key in pairs(players) do players[key] = nil end
+    for key, player in pairs(rekeyed) do players[key] = player end
+end
+
+-- Errors raised while building windows, shown by /blw debug
+BlacklistWarden.initErrors = {}
+
+-- Builds one window, catching errors so one broken window doesn't stop the others
+-- from loading (and so the error can be reported instead of failing silently).
+local function SafeCreate(label, builder)
+    local ok, result = xpcall(builder, function(err)
+        return tostring(err) .. "\n" .. (debugstack and debugstack(2, 8, 0) or "")
+    end)
+    if ok then return result end
+    table.insert(BlacklistWarden.initErrors, label .. ": " .. tostring(result))
+    print("|cffFF0000" .. addon.L["Blacklist Warden: "] .. "|r" .. label ..
+        " failed to load. Type /blw debug for details.")
+    return nil
+end
+
 -- Create and store widgets
 function BlacklistWarden:OnEnable()
-    blacklistPopupWindow = BlacklistWarden:CreateBlacklistPopupWindow();
-    blacklistPopupWarning = BlacklistWarden:CreateBlacklistWarningWindow();
-    blacklistListWindow = BlacklistWarden:CreateListFrame();
-    blacklistPopupWindow:SetMovable(not BlacklistWarden.db.profile.lockWindows)
-    blacklistPopupWarning:SetMovable(not BlacklistWarden.db.profile.lockWindows)
-    blacklistListWindow:SetMovable(not BlacklistWarden.db.profile.lockWindows)
-    BlacklistWarden.db.global.previousGroupSize = GetNumGroupMembers()
     if (not BlacklistWarden.db.global.dataCleanupV1) then
         BlacklistWarden:ConverTableToLower()
         BlacklistWarden.db.global.dataCleanupV1 = true
+    end
+    BlacklistWarden:RekeyForForever()
+
+    local locked = BlacklistWarden.db.profile.lockWindows
+    blacklistPopupWindow = SafeCreate("Popup window", function() return BlacklistWarden:CreateBlacklistPopupWindow() end)
+    blacklistPopupWarning = SafeCreate("Warning window", function() return BlacklistWarden:CreateBlacklistWarningWindow() end)
+    blacklistListWindow = SafeCreate("List window", function() return BlacklistWarden:CreateListFrame() end)
+    if blacklistPopupWindow then blacklistPopupWindow:SetMovable(not locked) end
+    if blacklistPopupWarning then blacklistPopupWarning:SetMovable(not locked) end
+    if blacklistListWindow then blacklistListWindow:SetMovable(not locked) end
+    BlacklistWarden.db.global.previousGroupSize = GetNumGroupMembers()
+end
+
+-- Opens the list window, or explains why it can't
+function BlacklistWarden:ShowListWindow()
+    if blacklistListWindow then
+        blacklistListWindow:Show()
+    else
+        print("|cffFF0000" .. addon.L["Blacklist Warden: "] .. "|rThe list window failed to load. Type /blw debug for details.")
     end
 end
 
@@ -259,21 +305,22 @@ function BlacklistWarden:CheckPlayersOnGroupUpdate()
             unitID = "raid" .. i
         end
         name, realm = UnitName(unitID)
-        if not realm then realm = GetRealmName() end
-        if name and realm then
-            local fullname = name .. "-" .. realm;
+        if name and not (issecretvalue and issecretvalue(name)) then
+            realm = BlacklistWarden:ResolveRealm(realm)
+            local key = BlacklistWarden:MakeKey(name, realm)
+            local displayName = BlacklistWarden:DisplayName(name, realm)
             local classBase, classId = UnitClassBase(unitID)
-            newMembers[fullname] = classId
+            newMembers[key] = { classId = classId, name = name, server = realm }
             -- Check only newly seen members. This also handles a member swap
             -- where the group size does not change, and joining an existing group.
-            if not previousMembers[fullname] then
-                local blacklistedPlayer = BlacklistWarden.db.global.blacklistedPlayers[fullname:lower()]
+            if not previousMembers[key] then
+                local blacklistedPlayer = BlacklistWarden.db.global.blacklistedPlayers[key]
                 if blacklistedPlayer and BlacklistWarden.db.profile.blacklistAnnouncement then
-                    SendChatMessage(addon.L["Detected blacklisted member "] .. fullname ..
+                    SendChatMessage(addon.L["Detected blacklisted member "] .. displayName ..
                         addon.L[", blacklist reason: "] ..
                         (blacklistedPlayer.reason or addon.L["Not specified"]), "PARTY")
                 end
-                if blacklistedPlayer and not acknowledgedBlacklistPlayers[fullname:lower()] then
+                if blacklistedPlayer and not acknowledgedBlacklistPlayers[key] then
                     if blacklistPopupWarning then
                         blacklistPopupWarning.setPlayerData(blacklistedPlayer)
                         blacklistPopupWarning:Show()
@@ -282,15 +329,18 @@ function BlacklistWarden:CheckPlayersOnGroupUpdate()
             end
         end
     end
-    local playername = UnitName("player") .. "-" .. GetRealmName()
+    local ownName, ownSecond = UnitName("player")
+    local ownKey = BlacklistWarden:MakeKey(ownName, BlacklistWarden:ResolveRealm(ownSecond))
     if BlacklistWarden.db.profile.leaverText then
-        for entry in pairs(previousMembers) do
-            if not newMembers[entry] and entry ~= playername then
-                -- Player has left the group
+        for key, member in pairs(previousMembers) do
+            if not newMembers[key] and key ~= ownKey and member.classId then
+                -- Player has left the group. The link target uses Name-Second so the
+                -- right-click menu splits it back into name and realm/surname.
+                local linkTarget = member.server ~= "" and (member.name .. "-" .. member.server) or member.name
                 print("|cffFFFF00" .. addon.L["Blacklist Warden: "] .. "|Hplayer:" ..
-                    entry ..
-                    ":" ..
-                    previousMembers[entry] + 4000000000 .. "|h|cffd80000[" .. entry .. addon.L["]|r|h has left the group."])
+                    linkTarget .. ":" .. (member.classId + 4000000000) ..
+                    "|h|cffd80000[" .. BlacklistWarden:DisplayName(member.name, member.server) ..
+                    addon.L["]|r|h has left the group."])
             end
         end
     end
@@ -304,15 +354,70 @@ function BlacklistWarden:CheckPlayersOnGroupUpdate()
     end
 end
 
+-- Open the options panel on any client (Settings API on modern clients, legacy Interface Options otherwise)
+function BlacklistWarden:OpenSettings()
+    if Settings and Settings.OpenToCategory and self.optionsId then
+        Settings.OpenToCategory(self.optionsId)
+    elseif InterfaceOptionsFrame_OpenToCategory and self.optionsFrame then
+        -- Called twice: the legacy panel often fails to scroll to the category on the first call
+        InterfaceOptionsFrame_OpenToCategory(self.optionsFrame)
+        InterfaceOptionsFrame_OpenToCategory(self.optionsFrame)
+    end
+end
+
 -- Slash commands
 function BlacklistWarden:SlashCommand(msg)
     if not msg or msg:trim() == "" then
         print(addon.L["|cffFFFF00/blw settings -|r Opens the settings window"])
         print(addon.L["|cffFFFF00/blw list -|r Opens the list window"])
     elseif string.lower(msg:trim()) == "settings" then
-        Settings.OpenToCategory(BlacklistWarden.optionsId)
+        BlacklistWarden:OpenSettings()
     elseif string.lower(msg:trim()) == "list" then
-        if blacklistListWindow then blacklistListWindow:Show() end
+        BlacklistWarden:ShowListWindow()
+    elseif string.lower(msg:trim()) == "debug" then
+        BlacklistWarden:PrintDebugInfo()
+    end
+end
+
+-- /blw debug: prints what the addon sees on this client, to help diagnose problems
+function BlacklistWarden:PrintDebugInfo()
+    local function line(label, value) print("|cffFFC000" .. label .. ":|r " .. tostring(value)) end
+    local version, build, _, toc = GetBuildInfo()
+    print("|cffFFFF00--- Blacklist Warden debug ---|r")
+    line("Client", tostring(version) .. " build " .. tostring(build) .. " interface " .. tostring(toc))
+    line("WOW_PROJECT_ID", WOW_PROJECT_ID)
+    line("Detected Forever", addon.isForever)
+    line("GetRealmName()", "'" .. tostring(GetRealmName and GetRealmName()) .. "'")
+    line("GetNormalizedRealmName()", "'" .. tostring(GetNormalizedRealmName and GetNormalizedRealmName()) .. "'")
+    local n, s = UnitName("player")
+    line("UnitName(player)", "'" .. tostring(n) .. "', '" .. tostring(s) .. "'")
+    if UnitFullName then
+        local fn, fs = UnitFullName("player")
+        line("UnitFullName(player)", "'" .. tostring(fn) .. "', '" .. tostring(fs) .. "'")
+    end
+    if UnitExists("target") and UnitIsPlayer("target") then
+        local tn, ts = UnitName("target")
+        line("UnitName(target)", "'" .. tostring(tn) .. "', '" .. tostring(ts) .. "'")
+        line("Target key", BlacklistWarden:MakeKey(tn, BlacklistWarden:ResolveRealm(ts)))
+    end
+    line("Own key", BlacklistWarden:MakeKey(n, BlacklistWarden:ResolveRealm(s)))
+    line("Settings API", Settings and Settings.OpenToCategory and "yes" or "no")
+    line("Menu API", Menu and Menu.ModifyMenu and "yes" or "no")
+    line("MenuUtil", MenuUtil and MenuUtil.CreateContextMenu and "yes" or "no")
+    line("TooltipDataProcessor", TooltipDataProcessor and "yes" or "no")
+    line("C_LFGList", C_LFGList and "yes" or "no")
+    line("Windows", "popup=" .. tostring(blacklistPopupWindow ~= nil) ..
+        " warning=" .. tostring(blacklistPopupWarning ~= nil) ..
+        " list=" .. tostring(blacklistListWindow ~= nil))
+    local count = 0
+    for _ in pairs(BlacklistWarden.db.global.blacklistedPlayers or {}) do count = count + 1 end
+    line("Saved players", count)
+    if #BlacklistWarden.initErrors == 0 then
+        line("Load errors", "none")
+    else
+        for _, err in ipairs(BlacklistWarden.initErrors) do
+            print("|cffFF0000Load error:|r " .. err)
+        end
     end
 end
 
@@ -371,26 +476,110 @@ function BlacklistWarden:SavePlayerInfoValue(key, value)
     playerInfo[key] = value;
 end
 
---Split fullname into name and realm
+--[[ Player identity
+Every saved entry has `name` and `server`. What `server` means depends on the client:
+  * Retail: the realm. Key "name-realm", shown as "Name-Realm".
+  * WoW Forever: there are no realms (GetRealmName() returns ""). UnitName() returns
+    (first name, surname), so `server` holds the surname, or "" if the character has none.
+    Key "first surname" (or just "first"), shown as "First Surname".
+All key and display building goes through the helpers below, so no other code needs to
+know which client it is running on.
+]]
+
+local function IsUsableString(value)
+    return type(value) == "string" and value ~= "" and not (issecretvalue and issecretvalue(value))
+end
+
+-- Returns the realm (or the surname on Forever) to store for a player.
+-- Retail: the given realm, or your own realm when it's missing (same-realm players).
+-- Forever: the given surname, or "" when the character has none.
+function BlacklistWarden:ResolveRealm(realm)
+    if IsUsableString(realm) then
+        return realm
+    end
+    if addon.isForever then
+        return ""
+    end
+    local own = GetRealmName and GetRealmName()
+    if not own or own == "" then
+        own = GetNormalizedRealmName and GetNormalizedRealmName()
+    end
+    return own or ""
+end
+
+-- Lowercase lookup key for the saved blacklist
+function BlacklistWarden:MakeKey(name, server)
+    name = name or ""
+    server = server or ""
+    if addon.isForever then
+        if server ~= "" then
+            return (name .. " " .. server):lower()
+        end
+        return name:lower()
+    end
+    return (name .. "-" .. server):lower()
+end
+
+-- Text shown to the user for a player
+function BlacklistWarden:DisplayName(name, server)
+    name = name or ""
+    server = server or ""
+    if server == "" then return name end
+    if addon.isForever then
+        return name .. " " .. server
+    end
+    return name .. "-" .. server
+end
+
+function BlacklistWarden:PlayerKey(player)
+    return BlacklistWarden:MakeKey(player["name"], player["server"])
+end
+
+function BlacklistWarden:PlayerDisplayName(player)
+    return BlacklistWarden:DisplayName(player["name"], player["server"])
+end
+
+-- Splits a full name string into name and realm (or name and surname on Forever).
+-- Accepts "Name-Realm", "Name", and on Forever also "First Surname" / "First-Surname".
+-- Also accepts a key produced by MakeKey.
 function BlacklistWarden:FormatName(fullname)
+    if not IsUsableString(fullname) then return nil, BlacklistWarden:ResolveRealm() end
+    fullname = fullname:match("^%s*(.-)%s*$")
     local name, realm
-    if fullname:find("-", nil, true) then
-        name, realm = strsplit("-", fullname)
+    if addon.isForever then
+        -- Character names can't contain spaces or hyphens, so either one separates the surname
+        name, realm = fullname:match("^([^%s%-]+)[%s%-]+(.+)$")
+        if not name then name = fullname end
+    elseif fullname:find("-", nil, true) then
+        name, realm = strsplit("-", fullname, 2)
     else
         name = fullname
     end
-    if not realm or realm == "" then
-        realm = GetRealmName()
-    end
+    return name, BlacklistWarden:ResolveRealm(realm)
+end
 
-    return name, realm
+-- Turns any full name or key string into the saved-list key
+function BlacklistWarden:KeyFromFullName(fullname)
+    local name, realm = BlacklistWarden:FormatName(fullname)
+    if not name then return nil end
+    return BlacklistWarden:MakeKey(name, realm)
+end
+
+-- Returns the saved entry for a full name / key string, or nil
+function BlacklistWarden:GetPlayer(fullname)
+    if not BlacklistWarden.db then return nil end
+    local players = BlacklistWarden.db.global.blacklistedPlayers
+    if not players then return nil end
+    local key = BlacklistWarden:KeyFromFullName(fullname)
+    return key and players[key] or nil
 end
 
 -- Stores the temporary player info in the database
 function BlacklistWarden:WritePlayerToDisk()
     local date = date("%m/%d/%Y %H:%M:%S")
-    local playerName = playerInfo["playerName"]:lower() .. "-" .. playerInfo["playerServer"]:lower()
-    local playerNameString = playerInfo["playerName"] .. "-" .. playerInfo["playerServer"]
+    playerInfo["playerServer"] = BlacklistWarden:ResolveRealm(playerInfo["playerServer"])
+    local playerName = BlacklistWarden:MakeKey(playerInfo["playerName"], playerInfo["playerServer"])
+    local playerNameString = BlacklistWarden:DisplayName(playerInfo["playerName"], playerInfo["playerServer"])
     local player = BlacklistWarden.db.global.blacklistedPlayers[playerName]
     if player ~= nil then
         date = player["date"]
@@ -450,8 +639,8 @@ end
 
 -- Edit player entry from the list window
 function BlacklistWarden:EditEntry(playername)
-    playername = playername:lower()
-    local player = BlacklistWarden.db.global.blacklistedPlayers[playername]
+    local player = BlacklistWarden:GetPlayer(playername)
+    if not player or not blacklistPopupWindow then return end
     playerInfo = {
         ["playerName"] = player["name"],
         ["playerServer"] = player["server"],
@@ -481,24 +670,21 @@ end
 
 -- Remove player from blacklist
 function BlacklistWarden:RemovePlayer(name)
-    name = name:lower()
     if not BlacklistWarden.db.global.blacklistedPlayers then BlacklistWarden.db.global.blacklistedPlayers = {} end
-    local player = BlacklistWarden.db.global.blacklistedPlayers[name]
-    local displayName = player and (player["name"] .. "-" .. player["server"]) or name
+    local key = BlacklistWarden:KeyFromFullName(name) or name:lower()
+    local player = BlacklistWarden.db.global.blacklistedPlayers[key]
+    if not player then return end
+    local displayName = BlacklistWarden:PlayerDisplayName(player)
     if blacklistListWindow then
         blacklistListWindow.removeEntry(player)
     end
-    BlacklistWarden.db.global.blacklistedPlayers[name] = nil;
+    BlacklistWarden.db.global.blacklistedPlayers[key] = nil;
     print("|cFF00FF00" .. displayName .. "|r" .. addon.L[" removed from blacklist."])
 end
 
 --check if player is on blacklist
 function BlacklistWarden:IsPlayerInList(name)
-    if not BlacklistWarden.db.global.blacklistedPlayers or not BlacklistWarden.db.global.blacklistedPlayers[name:lower()] then
-        return false
-    else
-        return true
-    end
+    return BlacklistWarden:GetPlayer(name) ~= nil
 end
 
 --Tooltip module
@@ -520,14 +706,15 @@ do
 
         local _, unit = tooltip:GetUnit()
 
-        if(issecretvalue(unit))then return end
+        -- issecretvalue only exists on retail (Midnight); Forever may not have it
+        if issecretvalue and issecretvalue(unit) then return end
 
         if unit and UnitIsPlayer(unit) and not UnitIsUnit(unit, "player") then
             local name, realm = UnitName(unit)
-            if not realm then realm = GetRealmName() end
-            local fullname = name .. "-" .. realm;
-            if not BlacklistWarden:IsPlayerInList(fullname) then return end
-            local player = BlacklistWarden.db.global.blacklistedPlayers[fullname:lower()]
+            if not IsUsableString(name) then return end
+            local key = BlacklistWarden:MakeKey(name, BlacklistWarden:ResolveRealm(realm))
+            local player = BlacklistWarden.db.global.blacklistedPlayers[key]
+            if not player then return end
 
             AddToTooltip(tooltip, player);
         end
@@ -537,12 +724,10 @@ do
     local function SetSearchEntry(tooltip, resultID, autoAcceptOption)
         if resultID then
             local searchResultInfo = C_LFGList.GetSearchResultInfo(resultID)
-            if not searchResultInfo.leaderName then return end
-            local name, realm = BlacklistWarden:FormatName(searchResultInfo.leaderName)
-            if not realm then realm = GetRealmName() end
-            local fullname = name .. "-" .. realm
-            if not BlacklistWarden:IsPlayerInList(fullname) then return end
-            local player = BlacklistWarden.db.global.blacklistedPlayers[fullname:lower()]
+            if not searchResultInfo or not searchResultInfo.leaderName then return end
+            if issecretvalue and issecretvalue(searchResultInfo.leaderName) then return end
+            local player = BlacklistWarden:GetPlayer(searchResultInfo.leaderName)
+            if not player then return end
 
             AddToTooltip(tooltip, player)
         end
@@ -562,15 +747,13 @@ do
             end
         elseif self.memberIdx then
             local fullName = C_LFGList.GetApplicantMemberInfo(self:GetParent().applicantID, self.memberIdx)
-            if fullName then
+            if IsUsableString(fullName) then
+                local player = BlacklistWarden:GetPlayer(fullName)
+                if not player then return end
                 local hasOwner = GameTooltip:GetOwner()
                 if not hasOwner then
                     GameTooltip:SetOwner(self, "ANCHOR_TOPLEFT", 0, 0)
                 end
-                local name, realm = BlacklistWarden:FormatName(fullName)
-                fullName = name .. "-" .. realm;
-                if not BlacklistWarden:IsPlayerInList(fullName) then return end
-                local player = BlacklistWarden.db.global.blacklistedPlayers[fullName:lower()]
                 --GameTooltip:SetPoint("TOPLEFT", self, "TOPRIGHT", 0, 0)
                 AddToTooltip(GameTooltip, player)
                 GameTooltip:Show()
@@ -578,9 +761,10 @@ do
         end
     end
 
-    --Hook for applicants in LFG
-    hooksecurefunc("LFGListApplicationViewer_UpdateResults", function(self)
-        local scrollBox = LFGListFrame.ApplicationViewer.ScrollBox
+    --Hook for applicants in LFG (not every client has the same group finder UI)
+    local function HookApplicationViewer(self)
+        local scrollBox = LFGListFrame and LFGListFrame.ApplicationViewer and LFGListFrame.ApplicationViewer.ScrollBox
+        if not scrollBox then return end
         if scrollBox.buttons then
             for i = 1, #scrollBox.buttons do
                 local button = scrollBox.buttons[i]
@@ -590,7 +774,7 @@ do
                 end
             end
         end
-        local frames = scrollBox:GetFrames()
+        local frames = scrollBox.GetFrames and scrollBox:GetFrames()
         if frames and frames[1] then
             for i = 1, #frames do
                 local button = frames[i]
@@ -600,11 +784,22 @@ do
                 end
             end
         end
-    end)
+    end
 
-    --More hooks
-    TooltipDataProcessor.AddTooltipPostCall(Enum.TooltipDataType.Unit, OnTooltipSetUnit)
-    hooksecurefunc("LFGListUtil_SetSearchEntryTooltip", SetSearchEntry)
+    if LFGListApplicationViewer_UpdateResults then
+        hooksecurefunc("LFGListApplicationViewer_UpdateResults", HookApplicationViewer)
+    end
+
+    --Unit tooltips: use TooltipDataProcessor when available, otherwise OnTooltipSetUnit
+    if TooltipDataProcessor and TooltipDataProcessor.AddTooltipPostCall and Enum.TooltipDataType then
+        TooltipDataProcessor.AddTooltipPostCall(Enum.TooltipDataType.Unit, OnTooltipSetUnit)
+    else
+        GameTooltip:HookScript("OnTooltipSetUnit", OnTooltipSetUnit)
+    end
+
+    if LFGListUtil_SetSearchEntryTooltip then
+        hooksecurefunc("LFGListUtil_SetSearchEntryTooltip", SetSearchEntry)
+    end
 end
 
 --Context menu module
@@ -633,12 +828,20 @@ do
             end
         else
             if not IsValidName(contextData) then return end
-            if not contextData.server then
-                realm = GetRealmName()
-            else
+            -- Some clients pass "Name-Realm" (or "First Surname" on Forever) in name,
+            -- or an empty string instead of nil for server
+            name, realm = BlacklistWarden:FormatName(contextData.name)
+            if IsUsableString(contextData.server) then
                 realm = contextData.server
             end
-            name = contextData.name
+            -- When the menu is for a unit, UnitName is the most reliable source:
+            -- (name, realm) on Retail, (first name, surname) on Forever
+            if contextData.unit and UnitExists(contextData.unit) then
+                local unitName, unitSecond = UnitName(contextData.unit)
+                if IsUsableString(unitName) then
+                    name, realm = unitName, unitSecond
+                end
+            end
             local guid
 
             if contextData.lineID then
@@ -653,19 +856,26 @@ do
                 return
             end
             if not class and guid then
-                _, class, _, _, _, _ = GetPlayerInfoByGUID(guid)
+                local guidRealm
+                _, class, _, _, _, _, guidRealm = GetPlayerInfoByGUID(guid)
+                -- guidRealm is "" for players on your own realm. Forever has no realms, so skip it there.
+                if not addon.isForever and not IsUsableString(contextData.server) and IsUsableString(guidRealm) then
+                    realm = guidRealm
+                end
             end
         end
         if not class then return end
+        if not name or name == "" then return end
+        realm = BlacklistWarden:ResolveRealm(realm)
         local popupText = "";
 
         BlacklistWarden:SavePlayerInfoValue("playerServer", realm)
         BlacklistWarden:SavePlayerInfoValue("playerName", name)
         BlacklistWarden:SavePlayerInfoValue("playerClass", class)
-        local fullName = playerInfo["playerName"] .. "-" .. playerInfo["playerServer"]
-        local isOnList = BlacklistWarden:IsPlayerInList(fullName);
-        local playername = UnitName("player")
-        if fullName == playername .. "-" .. GetRealmName() then return end
+        local fullName = BlacklistWarden:MakeKey(name, realm)
+        local isOnList = BlacklistWarden.db.global.blacklistedPlayers[fullName] ~= nil
+        local ownName, ownSecond = UnitName("player")
+        if fullName == BlacklistWarden:MakeKey(ownName, BlacklistWarden:ResolveRealm(ownSecond)) then return end
 
         if not isOnList then
             popupText = "|cffd80000" .. addon.L["Blacklist player|r"]
@@ -707,18 +917,48 @@ do
     end
 
     --Retrieves data for the LFG context menu
+    -- True when a value exists and isn't a restricted (secret) value on clients that have them
+    local function IsUsable(value)
+        if value == nil then return false end
+        if issecretvalue and issecretvalue(value) then return false end
+        return true
+    end
+
+    -- Finds the listing leader's class file name (e.g. "MAGE"). The member-info API differs
+    -- between clients (GetSearchResultMemberInfo was removed on retail), so try each in turn.
+    local function GetSearchResultLeaderClass(resultID, numMembers)
+        if C_LFGList.GetSearchResultLeaderInfo then
+            local leaderInfo = C_LFGList.GetSearchResultLeaderInfo(resultID)
+            if leaderInfo and IsUsable(leaderInfo.classFilename) then
+                return leaderInfo.classFilename
+            end
+        end
+        if C_LFGList.GetSearchResultPlayerInfo and numMembers then
+            for i = 1, numMembers do
+                local playerInfo = C_LFGList.GetSearchResultPlayerInfo(resultID, i)
+                if playerInfo and playerInfo.isLeader and IsUsable(playerInfo.classFilename) then
+                    return playerInfo.classFilename
+                end
+            end
+        end
+        if C_LFGList.GetSearchResultMemberInfo and numMembers then
+            for i = 1, numMembers do
+                local _, class, _, _, isLeader = C_LFGList.GetSearchResultMemberInfo(resultID, i)
+                if isLeader and IsUsable(class) then
+                    return class
+                end
+            end
+        end
+    end
+
     function module:GetLFGInfo(owner)
+        if not C_LFGList then return end
         local resultID = owner.resultID
         if resultID then
             local searchResultInfo = C_LFGList.GetSearchResultInfo(resultID)
+            if not searchResultInfo or not IsUsable(searchResultInfo.leaderName) then return end
             local name, realm = BlacklistWarden:FormatName(searchResultInfo.leaderName)
-            local _, class, isLeader
-            for i = 1, searchResultInfo.numMembers do
-                _, class, _, _, isLeader = C_LFGList.GetSearchResultMemberInfo(resultID, i)
-                if isLeader then
-                    break
-                end
-            end
+            local class = GetSearchResultLeaderClass(resultID, searchResultInfo.numMembers)
             return name, realm, class
         end
         local memberIdx = owner.memberIdx
@@ -734,6 +974,7 @@ do
             return
         end
         local fullName, class, localizedClass = C_LFGList.GetApplicantMemberInfo(applicantID, memberIdx)
+        if not IsUsable(fullName) or not IsUsable(class) then return end
         local name, realm = BlacklistWarden:FormatName(fullName)
 
         return name, realm, class
@@ -748,11 +989,9 @@ do
 end
 
 local function FilterChat(self, event, msg, author, ...)
-    if author ~= nil and BlacklistWarden:IsPlayerInList(author) and BlacklistWarden.db.global.blacklistedPlayers[author:lower()]["muted"]==true then
-        return true;
-    else
-        return false;
-    end
+    -- author is "Name-Realm" on Retail; on Forever it may be "First-Surname" or "First Surname"
+    local player = BlacklistWarden:GetPlayer(author)
+    return player ~= nil and player["muted"] == true
 end
 
 ChatFrame_AddMessageEventFilter("CHAT_MSG_CHANNEL", FilterChat)
